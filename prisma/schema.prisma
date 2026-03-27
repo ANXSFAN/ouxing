@@ -1,0 +1,243 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  name      String
+  role      UserRole @default(ADMIN)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  quotes    Quote[]
+
+  @@map("users")
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  slug      String     @unique
+  sortOrder Int        @default(0) @map("sort_order")
+  isActive  Boolean    @default(true) @map("is_active")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  content   Json
+  parentId  String?    @map("parent_id")
+  parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryHierarchy")
+  products  Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id              String               @id @default(cuid())
+  modelNumber     String               @map("model_number")
+  price           Decimal?             @db.Decimal(10, 2)
+  isActive        Boolean              @default(true) @map("is_active")
+  isFeatured      Boolean              @default(false) @map("is_featured")
+  categoryId      String?              @map("category_id")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+  content         Json
+  slug            String               @unique
+  specs           Json?
+  inquiryProducts InquiryProduct[]
+  certificates    ProductCertificate[]
+  documents       ProductDocument[]
+  images          ProductImage[]
+  category        Category?            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  quoteItems      QuoteItem[]
+
+  @@index([categoryId])
+  @@index([isActive])
+  @@index([modelNumber])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  url       String
+  alt       String?
+  sortOrder Int      @default(0) @map("sort_order")
+  isPrimary Boolean  @default(false) @map("is_primary")
+  productId String   @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model ProductDocument {
+  id        String       @id @default(cuid())
+  name      String
+  fileName  String       @map("file_name")
+  filePath  String       @map("file_path")
+  fileSize  Int          @map("file_size")
+  mimeType  String       @map("mime_type")
+  docType   DocumentType @default(DATASHEET) @map("doc_type")
+  productId String       @map("product_id")
+  createdAt DateTime     @default(now()) @map("created_at")
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_documents")
+}
+
+model ProductCertificate {
+  id         String    @id @default(cuid())
+  name       String
+  certType   String    @map("cert_type")
+  fileName   String    @map("file_name")
+  filePath   String    @map("file_path")
+  fileSize   Int       @map("file_size")
+  mimeType   String    @map("mime_type")
+  expiryDate DateTime? @map("expiry_date")
+  productId  String    @map("product_id")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_certificates")
+}
+
+model Inquiry {
+  id         String           @id @default(cuid())
+  name       String
+  email      String
+  company    String?
+  phone      String?
+  message    String
+  status     InquiryStatus    @default(PENDING)
+  adminNotes String?          @map("admin_notes")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+  products   InquiryProduct[]
+
+  @@index([status])
+  @@map("inquiries")
+}
+
+model InquiryProduct {
+  id            String   @id @default(cuid())
+  quantity      Int?
+  expectedPrice Decimal? @map("expected_price") @db.Decimal(10, 2)
+  inquiryId     String   @map("inquiry_id")
+  productId     String   @map("product_id")
+  inquiry       Inquiry  @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  product       Product  @relation(fields: [productId], references: [id])
+
+  @@unique([inquiryId, productId])
+  @@map("inquiry_products")
+}
+
+model Quote {
+  id              String      @id @default(cuid())
+  quoteNumber     String      @unique @map("quote_number")
+  customerName    String      @map("customer_name")
+  customerEmail   String?     @map("customer_email")
+  customerCompany String?     @map("customer_company")
+  customerPhone   String?     @map("customer_phone")
+  customerAddress String?     @map("customer_address")
+  title           String?
+  notes           String?
+  validDays       Int         @default(30) @map("valid_days")
+  currency        String      @default("CNY")
+  subtotal        Decimal     @default(0) @db.Decimal(12, 2)
+  discount        Decimal     @default(0) @db.Decimal(12, 2)
+  tax             Decimal     @default(0) @db.Decimal(12, 2)
+  total           Decimal     @default(0) @db.Decimal(12, 2)
+  status          QuoteStatus @default(DRAFT)
+  createdById     String      @map("created_by_id")
+  inquiryId       String?     @map("inquiry_id")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  items           QuoteItem[]
+  createdBy       User        @relation(fields: [createdById], references: [id])
+
+  @@index([status])
+  @@index([quoteNumber])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id            String  @id @default(cuid())
+  productName   String  @map("product_name")
+  productModel  String  @map("product_model")
+  specification String?
+  quantity      Int
+  unitPrice     Decimal @map("unit_price") @db.Decimal(10, 2)
+  totalPrice    Decimal @map("total_price") @db.Decimal(12, 2)
+  notes         String?
+  sortOrder     Int     @default(0) @map("sort_order")
+  productId     String  @map("product_id")
+  quoteId       String  @map("quote_id")
+  product       Product @relation(fields: [productId], references: [id])
+  quote         Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@map("quote_items")
+}
+
+model AttributeDefinition {
+  id           String            @id @default(dbgenerated("(gen_random_uuid())::text"))
+  name         Json
+  key          String            @unique
+  type         String
+  unit         String?
+  scope        String
+  isHighlight  Boolean           @default(false) @map("is_highlight")
+  isFilterable Boolean           @default(false) @map("is_filterable")
+  sortOrder    Int               @default(0) @map("sort_order")
+  isPinned     Boolean           @default(false) @map("is_pinned")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @default(now()) @updatedAt @map("updated_at")
+  options      AttributeOption[]
+
+  @@map("attribute_definitions")
+}
+
+model AttributeOption {
+  id          String              @id @default(dbgenerated("(gen_random_uuid())::text"))
+  value       String
+  color       String?
+  attributeId String              @map("attribute_id")
+  attribute   AttributeDefinition @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@map("attribute_options")
+}
+
+enum UserRole {
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum DocumentType {
+  DATASHEET
+  SPEC_SHEET
+  MANUAL
+  IES_FILE
+  OTHER
+}
+
+enum InquiryStatus {
+  PENDING
+  PROCESSING
+  QUOTED
+  CLOSED
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
