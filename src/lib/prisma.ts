@@ -1,6 +1,5 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import pg from "pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -8,8 +7,7 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const connectionString = process.env.DATABASE_URL || process.env.DIRECT_URL!;
-  const pool = new pg.Pool({ connectionString, max: 5 });
-  const adapter = new PrismaPg(pool);
+  const adapter = new PrismaPg({ connectionString });
   return new PrismaClient({ adapter });
 }
 
