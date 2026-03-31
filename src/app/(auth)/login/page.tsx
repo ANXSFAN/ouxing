@@ -52,7 +52,7 @@ export default function LoginPage() {
         </div>
         <div>
           <CardTitle className="text-2xl font-bold text-white">
-            SysLED 管理系统
+            欧星管理系统
           </CardTitle>
           <CardDescription className="text-slate-400">
             请输入管理员账号登录

@@ -1,4 +1,4 @@
-export const SITE_NAME = "SysLED";
+export const SITE_NAME = "欧星";
 export const SITE_DESCRIPTION = "专业LED照明产品与解决方案";
 
 export const ITEMS_PER_PAGE = 20;

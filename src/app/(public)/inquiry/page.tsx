@@ -10,8 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
-  Loader2, X, CheckCircle2, Send, Trash2, Plus, Minus,
-  Package, ShoppingBag,
+  Loader2, CheckCircle2, Send, Trash2, Plus, Minus,
+  Package, ShoppingBag, Building2, Phone, MessageSquare,
 } from "lucide-react";
 import {
   getCartItems, setCartItems, removeFromCart, clearCart, addToCart,
@@ -30,7 +30,7 @@ function InquiryContent() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<InquiryCartItem[]>([]);
-  const [form, setForm] = useState({ name: "", email: "", company: "", phone: "", message: "" });
+  const [form, setForm] = useState({ company: "", phone: "", message: "" });
 
   // Load cart from localStorage
   useEffect(() => {
@@ -44,10 +44,8 @@ function InquiryContent() {
   const productId = searchParams.get("product");
   useEffect(() => {
     if (!productId) return;
-    // Check if already in cart
     const existing = getCartItems().find((i) => i.productId === productId);
     if (existing) return;
-    // Fetch product info and add
     fetch(`/api/products/${productId}`)
       .then((r) => r.json())
       .then((d) => {
@@ -92,10 +90,6 @@ function InquiryContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.email) {
-      toast.error("请填写姓名和邮箱");
-      return;
-    }
     if (items.length === 0 && !form.message) {
       toast.error("请至少添加一个产品或填写留言");
       return;
@@ -135,16 +129,18 @@ function InquiryContent() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center max-w-sm mx-auto px-6">
-          <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 className="w-7 h-7 text-green-600" />
+          <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-5">
+            <CheckCircle2 className="w-8 h-8 text-green-600" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">询价已提交</h1>
-          <p className="text-sm text-gray-500 mb-6">我们会在1-2个工作日内回复您。</p>
+          <h1 className="text-xl font-bold text-neutral-900 mb-2">询价已提交</h1>
+          <p className="text-sm text-neutral-500 mb-8">我们会在1-2个工作日内回复您。</p>
           <div className="flex gap-3 justify-center">
-            <Button asChild variant="outline" size="sm"><Link href="/products">继续浏览</Link></Button>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => {
+            <Button asChild variant="outline" size="sm">
+              <Link href="/products">继续浏览</Link>
+            </Button>
+            <Button size="sm" className="bg-neutral-900 hover:bg-neutral-800 text-white" onClick={() => {
               setSubmitted(false);
-              setForm({ name: "", email: "", company: "", phone: "", message: "" });
+              setForm({ company: "", phone: "", message: "" });
               setItems([]);
             }}>再次询价</Button>
           </div>
@@ -154,45 +150,54 @@ function InquiryContent() {
   }
 
   return (
-    <div>
-      <div className="bg-gray-50 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-2xl font-bold text-gray-900">询价单</h1>
-          <p className="text-sm text-gray-400 mt-1">
+    <div className="bg-neutral-50 min-h-[calc(100vh-64px)]">
+      {/* Page header */}
+      <div className="bg-white border-b">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+          <h1 className="text-2xl font-bold text-neutral-900">询价单</h1>
+          <p className="text-sm text-neutral-500 mt-1">
             {items.length > 0
-              ? `已选 ${items.length} 个产品，填写联系信息提交询价`
+              ? `已选 ${items.length} 个产品，确认后提交询价`
               : "浏览产品后点击「加入询价单」添加产品"}
           </p>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* ── 产品列表（购物车风格） ── */}
-          <div>
-            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">
-              询价产品 ({items.length})
-            </h2>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* ── 产品列表 ── */}
+          <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-neutral-100">
+              <h2 className="text-sm font-semibold text-neutral-900 flex items-center gap-2">
+                <ShoppingBag className="w-4 h-4 text-neutral-400" />
+                询价产品
+                {items.length > 0 && (
+                  <span className="bg-neutral-100 text-neutral-600 text-xs font-medium px-2 py-0.5 rounded-full">
+                    {items.length}
+                  </span>
+                )}
+              </h2>
+            </div>
 
             {items.length === 0 ? (
-              <div className="border border-dashed border-gray-200 rounded-xl p-10 text-center">
-                <ShoppingBag className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-                <p className="text-sm text-gray-400 mb-4">询价单为空</p>
+              <div className="p-10 text-center">
+                <Package className="w-10 h-10 text-neutral-200 mx-auto mb-3" />
+                <p className="text-sm text-neutral-400 mb-4">询价单为空</p>
                 <Button asChild variant="outline" size="sm">
                   <Link href="/products">去选产品</Link>
                 </Button>
               </div>
             ) : (
-              <div className="border border-gray-100 rounded-xl overflow-hidden divide-y divide-gray-100">
+              <div className="divide-y divide-neutral-100">
                 {items.map((item) => (
-                  <div key={item.productId} className="flex gap-4 p-4 bg-white">
+                  <div key={item.productId} className="flex gap-4 p-4 hover:bg-neutral-50/50 transition-colors">
                     {/* Image */}
-                    <div className="w-20 h-20 bg-gray-50 rounded-lg relative overflow-hidden shrink-0">
+                    <div className="w-20 h-20 bg-neutral-50 rounded-lg relative overflow-hidden shrink-0 border border-neutral-100">
                       {item.imageUrl ? (
-                        <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-1" unoptimized />
+                        <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-1.5" unoptimized />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Package className="w-6 h-6 text-gray-200" />
+                          <Package className="w-6 h-6 text-neutral-200" />
                         </div>
                       )}
                     </div>
@@ -201,26 +206,26 @@ function InquiryContent() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="text-sm font-medium text-gray-900 line-clamp-1">{item.name}</p>
-                          <p className="text-xs text-gray-400 font-mono">{item.modelNumber}</p>
+                          <p className="text-sm font-medium text-neutral-900 line-clamp-1">{item.name}</p>
+                          <p className="text-xs text-neutral-400 font-mono mt-0.5">{item.modelNumber}</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => handleRemove(item.productId)}
-                          className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                          className="text-neutral-300 hover:text-red-500 transition-colors p-1 -mr-1"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-4 mt-3">
+                      <div className="flex items-center gap-5 mt-3">
                         {/* Quantity */}
-                        <div className="flex items-center gap-0.5">
-                          <Label className="text-xs text-gray-400 mr-2">数量</Label>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-neutral-400 mr-1.5">数量</span>
                           <button
                             type="button"
                             onClick={() => updateQty(item.productId, -1)}
-                            className="w-7 h-7 rounded border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600"
+                            className="w-7 h-7 rounded-md border border-neutral-200 flex items-center justify-center text-neutral-400 hover:border-neutral-300 hover:text-neutral-600 transition-colors"
                           >
                             <Minus className="w-3 h-3" />
                           </button>
@@ -228,24 +233,24 @@ function InquiryContent() {
                           <button
                             type="button"
                             onClick={() => updateQty(item.productId, 1)}
-                            className="w-7 h-7 rounded border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600"
+                            className="w-7 h-7 rounded-md border border-neutral-200 flex items-center justify-center text-neutral-400 hover:border-neutral-300 hover:text-neutral-600 transition-colors"
                           >
                             <Plus className="w-3 h-3" />
                           </button>
                         </div>
 
-                        {/* Expected Price (optional) */}
-                        <div className="flex items-center gap-2">
-                          <Label className="text-xs text-gray-400 whitespace-nowrap">期望单价</Label>
+                        {/* Expected Price */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-neutral-400 whitespace-nowrap">期望单价</span>
                           <div className="relative">
-                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">¥</span>
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400">¥</span>
                             <Input
                               type="number"
                               min="0"
                               step="0.01"
                               value={item.expectedPrice ?? ""}
                               onChange={(e) => updateExpectedPrice(item.productId, e.target.value)}
-                              placeholder="可选"
+                              placeholder=""
                               className="pl-7 w-28 h-8 text-sm"
                             />
                           </div>
@@ -259,39 +264,47 @@ function InquiryContent() {
           </div>
 
           {/* ── 联系信息 ── */}
-          <div>
-            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">
-              联系信息
-            </h2>
-            <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-neutral-100">
+              <h2 className="text-sm font-semibold text-neutral-900 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-neutral-400" />
+                补充信息
+                <span className="text-xs font-normal text-neutral-400">（选填）</span>
+              </h2>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-sm text-gray-600">姓名 *</Label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                  <Label className="text-sm text-neutral-600 flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-neutral-400" />
+                    公司名称
+                  </Label>
+                  <Input
+                    value={form.company}
+                    onChange={(e) => setForm({ ...form, company: e.target.value })}
+                    placeholder=""
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-sm text-gray-600">邮箱 *</Label>
-                  <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-sm text-gray-600">公司</Label>
-                  <Input value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm text-gray-600">电话</Label>
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  <Label className="text-sm text-neutral-600 flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-neutral-400" />
+                    联系电话
+                  </Label>
+                  <Input
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    placeholder=""
+                  />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-sm text-gray-600">留言（可选）</Label>
+                <Label className="text-sm text-neutral-600">留言</Label>
                 <Textarea
                   value={form.message}
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
                   rows={3}
                   className="resize-none"
-                  placeholder="补充说明，如交付时间、特殊要求等..."
+                  placeholder=""
                 />
               </div>
             </div>
@@ -301,7 +314,7 @@ function InquiryContent() {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11 font-semibold rounded-lg"
+            className="w-full bg-neutral-900 hover:bg-neutral-800 text-white h-12 font-semibold rounded-xl text-sm"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
             {loading ? "提交中..." : `提交询价${items.length > 0 ? ` (${items.length} 个产品)` : ""}`}

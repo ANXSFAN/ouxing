@@ -91,8 +91,8 @@ function NewQuoteContent() {
           if (data.id) {
             setForm((prev) => ({
               ...prev,
-              customerName: data.name,
-              customerEmail: data.email,
+              customerName: data.name || data.company || "",
+              customerEmail: data.email || "",
               customerCompany: data.company || "",
               customerPhone: data.phone || "",
             }));

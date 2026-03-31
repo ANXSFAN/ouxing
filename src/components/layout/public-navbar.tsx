@@ -47,11 +47,11 @@ export function PublicNavbar() {
             </span>
             <span className="hidden sm:flex items-center gap-1.5">
               <Mail className="w-3 h-3" />
-              info@factorled.com
+              info@ouxing.com
             </span>
           </div>
           <span className="hidden sm:block text-neutral-500">
-            Professional LED Lighting Manufacturer
+            专业LED照明产品制造商
           </span>
         </div>
       </div>
@@ -70,7 +70,7 @@ export function PublicNavbar() {
           <Link href="/" className="flex items-center shrink-0">
             <Image
               src="/logo.jpg"
-              alt="FactorLED"
+              alt="欧星"
               width={180}
               height={32}
               className="h-7 sm:h-8 w-auto"

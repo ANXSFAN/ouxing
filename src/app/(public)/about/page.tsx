@@ -6,7 +6,7 @@ export default function AboutPage() {
       <div className="bg-gray-50 border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <h1 className="text-2xl font-bold text-gray-900">关于我们</h1>
-          <p className="text-sm text-gray-400 mt-1">SysLED - 专业LED照明产品制造商</p>
+          <p className="text-sm text-gray-400 mt-1">欧星 - 专业LED照明产品制造商</p>
         </div>
       </div>
 
@@ -14,7 +14,7 @@ export default function AboutPage() {
         {/* 简介 */}
         <section className="py-12 max-w-2xl">
           <p className="text-gray-600 leading-relaxed">
-            SysLED成立于2015年，是一家专注于LED照明产品研发与制造的企业。公司拥有现代化生产基地，
+            欧星成立于2015年，是一家专注于LED照明产品研发与制造的企业。公司拥有现代化生产基地，
             配备全自动SMT贴片线、无尘组装车间和完善的老化测试系统。产品通过CE、UL、RoHS、SAA、DLC等多项国际认证，远销50多个国家和地区。
           </p>
         </section>

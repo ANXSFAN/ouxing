@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ExcelJS from "exceljs";
-import { format } from "date-fns";
 import path from "path";
 import { readFile } from "fs/promises";
 
@@ -25,7 +24,7 @@ export async function GET(
         include: {
           product: {
             include: {
-              images: { orderBy: { sortOrder: "asc" }, take: 1 },
+              images: { orderBy: { sortOrder: "asc" }, take: 2 },
               category: true,
             },
           },
@@ -37,33 +36,36 @@ export async function GET(
 
   if (!quote) return NextResponse.json({ error: "报价单不存在" }, { status: 404 });
 
+  const isZh = lang === "zh";
+  const altLang = isZh ? "en" : "zh";
+  const loc = (content: unknown, field: "name" | "description") => {
+    const c = content as Record<string, Record<string, string>> | null;
+    return c?.[lang]?.[field] || c?.[altLang]?.[field] || "";
+  };
+
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet("发货清单", {
+  const ws = wb.addWorksheet(isZh ? "报价表" : "Quotation", {
     pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true },
   });
 
-  // ── Column widths ──
+  // ── Column widths (matching reference) ──
   ws.columns = [
-    { key: "A", width: 26 },   // Factory Model / SKU
-    { key: "B", width: 14 },   // Picture
-    { key: "C", width: 20 },   // Item / Category
-    { key: "D", width: 56 },   // Description
-    { key: "E", width: 10 },   // Watt
-    { key: "F", width: 12 },   // Color
-    { key: "G", width: 12 },   // QTY/PCS
-    { key: "H", width: 14 },   // QTY/CTN
-    { key: "I", width: 10 },   // CTNS
-    { key: "J", width: 9 },    // L
-    { key: "K", width: 9 },    // W
-    { key: "L", width: 9 },    // H
-    { key: "M", width: 13 },   // Total CBM
-    { key: "N", width: 10 },   // N.W
-    { key: "O", width: 10 },   // G.W
-    { key: "P", width: 12 },   // T.N.W
-    { key: "Q", width: 12 },   // T.G.W
-    { key: "R", width: 13 },   // Unit price
-    { key: "S", width: 14 },   // Total
-    { key: "T", width: 14 },   // 备注
+    { key: "A", width: 36.4 },  // Picture 1
+    { key: "B", width: 36.4 },  // Picture 2
+    { key: "C", width: 12 },    // Power
+    { key: "D", width: 27 },    // Specification
+    { key: "E", width: 15 },    // Voltage
+    { key: "F", width: 12.5 },  // Lumen
+    { key: "G", width: 12 },    // CCT / Color
+    { key: "H", width: 12 },    // Chip
+    { key: "I", width: 11.5 },  // CRI
+    { key: "J", width: 13.5 },  // Power Factor
+    { key: "K", width: 13.5 },  // Beam Angle
+    { key: "L", width: 12.5 },  // Material
+    { key: "M", width: 13 },    // Product Size
+    { key: "N", width: 12.5 },  // IP
+    { key: "O", width: 13 },    // Price
+    { key: "P", width: 21.5 },  // Remark
   ];
 
   const borderThin: Partial<ExcelJS.Borders> = {
@@ -74,170 +76,150 @@ export async function GET(
   };
 
   const headerFont: Partial<ExcelJS.Font> = {
-    bold: true, size: 11, name: "Arial",
+    bold: true, size: 14, name: "Arial",
   };
 
   const dataFont: Partial<ExcelJS.Font> = {
-    size: 11, name: "Arial",
+    size: 12, name: "Arial",
   };
 
   const centerAlign: Partial<ExcelJS.Alignment> = {
     horizontal: "center", vertical: "middle", wrapText: true,
   };
 
-  const isZh = lang === "zh";
-
   // ── Row 1: Title ──
-  const dateStr = format(quote.createdAt, "yyyy/M/d");
-  ws.mergeCells("A1:O1");
+  ws.mergeCells("A1:P1");
   const titleCell = ws.getCell("A1");
-  titleCell.value = isZh
-    ? `集装箱出货产品清单            出货日期: ${dateStr}`
-    : `Container Shipment Product Invoice            Shipping Date: ${dateStr}`;
-  titleCell.font = { bold: true, size: 16, name: "Arial" };
-  titleCell.alignment = { vertical: "middle" };
-  ws.getRow(1).height = 40;
+  titleCell.value = "前洋-欧达星产品报价表";
+  titleCell.font = { size: 28, name: "宋体" };
+  titleCell.alignment = { horizontal: "center", vertical: "middle" };
+  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
+  ws.getRow(1).height = 50;
 
-  // ── Row 2: Quote number ──
-  ws.mergeCells("A2:O2");
-  const subCell = ws.getCell("A2");
-  subCell.value = isZh
-    ? `报价编号: ${quote.quoteNumber}    客户: ${quote.customerName}${quote.customerCompany ? " / " + quote.customerCompany : ""}`
-    : `Quote No.: ${quote.quoteNumber}    Customer: ${quote.customerName}${quote.customerCompany ? " / " + quote.customerCompany : ""}`;
-  subCell.font = { size: 12, name: "Arial" };
-  subCell.alignment = { vertical: "middle" };
-  ws.getRow(2).height = 30;
-
-  // ── Row 3: Empty spacer ──
-  ws.getRow(3).height = 6;
-
-  // ── Row 4-5: Header ──
-  const headers = [
-    isZh ? "工厂型号" : "Factory Model",
-    isZh ? "图片" : "Picture",
-    isZh ? "品类" : "Item",
-    isZh ? "描述" : "Description",
-    isZh ? "功率" : "Watt",
-    isZh ? "颜色" : "Color",
-    "QTY/PCS",
-    isZh ? "QTY/CTN\n每箱数量" : "QTY/CTN",
-    isZh ? "CTNS\n箱数" : "CTNS",
-    isZh ? "包装尺寸 (CM)" : "Packing Size (CM)", "", "",
-    "Total CBM",
-    "N.W\nKG", "G.W\nKG", "T.N.W\nKG", "T.G.W\nKG",
-    isZh ? "单价" : "Unit price",
-    isZh ? "合计" : "Total",
-    isZh ? "备注" : "Remark",
+  // ── Row 2-3: Headers (two-row header) ──
+  const headers: [string, string][] = [
+    ["图片", "Picture"],           // A
+    ["图片", "Picture"],           // B
+    ["功率", "Power"],             // C
+    ["", ""],                       // D — header only in row 3
+    ["电压", "Voltage"],           // E
+    ["流明", "Lumen"],             // F
+    ["色温", "Color"],             // G
+    ["芯片", "Chip"],              // H
+    ["CRI", "CRI"],                // I
+    ["功率因数", "Power Factor"],  // J
+    ["光束角", "Beam Angle"],      // K
+    ["材质", "Material"],          // L
+    ["产品尺寸\n(mm)", "Product Size\n(mm)"], // M
+    ["IP", "IP"],                  // N
+    ["含税价RMB", "Unit Price(RMB)"], // O
+    ["备注", "Remark"],            // P
   ];
 
-  const subHeaders = [
-    "", "", "", "", "", "", "", "", "",
-    "L", "W", "H", "",
-    "", "", "", "",
-    "RMB", "RMB", "",
-  ];
+  // D column row 3 header
+  const dHeader: [string, string] = ["规格", "Specification"];
 
-  // Merge "Packing Size" across J4:L4
-  ws.mergeCells("J4:L4");
-  // Merge headers that span 2 rows
-  const singleRowCols = ["A","B","C","D","E","F","G","H","I","M","N","O","P","Q","T"];
-  singleRowCols.forEach((col) => {
-    ws.mergeCells(`${col}4:${col}5`);
+  // Merge header cells across rows 2-3 (all except D)
+  const mergeCols = ["A","B","C","E","F","G","H","I","J","K","L","M","N","O","P"];
+  mergeCols.forEach((col) => {
+    ws.mergeCells(`${col}2:${col}3`);
   });
-  // R and S need sub-header "RMB"
-  // J,K,L have sub-headers L,W,H
 
-  ws.getRow(4).height = 32;
-  ws.getRow(5).height = 24;
+  ws.getRow(2).height = 32;
+  ws.getRow(3).height = 32;
 
-  headers.forEach((h, i) => {
-    const cell = ws.getCell(4, i + 1);
-    cell.value = h;
+  // Set header values
+  headers.forEach(([zh, en], i) => {
+    const text = isZh ? zh : en;
+    if (i === 3) {
+      // D column: only row 3 has header
+      const cell3 = ws.getCell(3, 4);
+      cell3.value = isZh ? dHeader[0] : dHeader[1];
+      cell3.font = headerFont;
+      cell3.alignment = centerAlign;
+      cell3.border = borderThin;
+      cell3.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
+      // D row 2 empty but styled
+      const cell2 = ws.getCell(2, 4);
+      cell2.font = headerFont;
+      cell2.alignment = centerAlign;
+      cell2.border = borderThin;
+      cell2.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
+      return;
+    }
+    const cell = ws.getCell(2, i + 1);
+    cell.value = text;
     cell.font = headerFont;
     cell.alignment = centerAlign;
     cell.border = borderThin;
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E1F2" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
   });
 
-  subHeaders.forEach((h, i) => {
-    const cell = ws.getCell(5, i + 1);
-    if (h) cell.value = h;
-    cell.font = { ...headerFont, size: 9 };
-    cell.alignment = centerAlign;
+  // Style row 3 borders for merged cells
+  for (let c = 1; c <= 16; c++) {
+    const cell = ws.getCell(3, c);
     cell.border = borderThin;
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E1F2" } };
-  });
+    if (!cell.fill || (cell.fill as ExcelJS.FillPattern).pattern !== "solid") {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
+    }
+  }
+
+  // ── Helper: load image and add to workbook ──
+  async function addProductImage(
+    imageUrl: string,
+    col: number,
+    row: number
+  ): Promise<void> {
+    try {
+      const imagePath = imageUrl.replace("/api/files/", "");
+      const fullPath = path.join(process.cwd(), "uploads", imagePath);
+      const imageBuffer = await readFile(fullPath);
+      const ext = path.extname(fullPath).toLowerCase().replace(".", "");
+      const extension = ext === "jpg" ? "jpeg" : ext as "jpeg" | "png" | "gif";
+
+      const imageId = wb.addImage({
+        buffer: imageBuffer as unknown as ExcelJS.Buffer,
+        extension,
+      });
+
+      ws.addImage(imageId, {
+        tl: { col, row: row - 1 } as ExcelJS.Anchor,
+        br: { col: col + 1, row } as ExcelJS.Anchor,
+        editAs: "oneCell",
+      });
+    } catch {
+      // Image not found, skip
+    }
+  }
 
   // ── Data rows ──
-  const DATA_START_ROW = 6;
+  const DATA_START_ROW = 4;
   let rowIdx = DATA_START_ROW;
-
-  let totalQty = 0;
-  let totalCtns = 0;
-  let totalCbm = 0;
-  let totalNW = 0;
-  let totalGW = 0;
-  let grandTotal = 0;
-
-  // Helper to get localized text: strictly lang first, fallback to other
-  const altLang = lang === "zh" ? "en" : "zh";
-  const loc = (content: unknown, field: "name" | "description") => {
-    const c = content as Record<string, Record<string, string>> | null;
-    return c?.[lang]?.[field] || c?.[altLang]?.[field] || "";
-  };
 
   for (const item of quote.items) {
     const product = item.product;
     const specs = (product.specs as Record<string, string>) || {};
-    const productName = loc(product.content, "name") || item.productName;
     const description = loc(product.content, "description") || item.specification || "";
-    const categoryName = product.category ? loc(product.category.content, "name") : "";
 
-    const qty = item.quantity;
-    const unitPrice = Number(item.unitPrice);
-    const qtyPerCarton = parseFloat(specs.qty_per_carton) || 1;
-    const ctns = Math.ceil(qty / qtyPerCarton);
-    const cL = parseFloat(specs.carton_length) || 0;
-    const cW = parseFloat(specs.carton_width) || 0;
-    const cH = parseFloat(specs.carton_height) || 0;
-    const nw = parseFloat(specs.net_weight) || 0;
-    const gw = parseFloat(specs.gross_weight) || 0;
-    const cbm = ctns * cL * cW * cH / 1000000;
-    const tNW = ctns * nw;
-    const tGW = ctns * gw;
-    const lineTotal = qty * unitPrice;
-
-    totalQty += qty;
-    totalCtns += ctns;
-    totalCbm += cbm;
-    totalNW += tNW;
-    totalGW += tGW;
-    grandTotal += lineTotal;
-
-    const row = ws.getRow(rowIdx);
-    row.height = 80; // Tall enough for product image
+    ws.getRow(rowIdx).height = 120;
 
     const values = [
-      product.modelNumber,      // A: Factory Model / SKU
-      "",                        // B: Picture (image inserted below)
-      categoryName || item.productName, // C: Item (category name in selected lang)
-      description,               // D: Description (in selected lang)
-      specs.power || "",         // E: Watt
-      specs.cct || "",           // F: Color
-      qty,                       // G: QTY/PCS
-      qtyPerCarton,              // H: QTY/CTN
-      ctns,                      // I: CTNS
-      cL || "",                  // J: L
-      cW || "",                  // K: W
-      cH || "",                  // L: H
-      cbm ? +cbm.toFixed(4) : "", // M: Total CBM
-      nw || "",                  // N: N.W
-      gw || "",                  // O: G.W
-      tNW ? +tNW.toFixed(1) : "", // P: T.N.W
-      tGW ? +tGW.toFixed(1) : "", // Q: T.G.W
-      unitPrice,                 // R: Unit price
-      +lineTotal.toFixed(2),     // S: Total
-      item.notes || "",          // T: 备注
+      "",                              // A: Picture 1 (image inserted separately)
+      "",                              // B: Picture 2 (image inserted separately)
+      specs.power || "",               // C: Power
+      description,                     // D: Specification / Description
+      specs.voltage || "",             // E: Voltage
+      specs.lumen || "",               // F: Lumen
+      specs.cct || "",                 // G: CCT / Color
+      specs.chip || "",                // H: Chip
+      specs.cri || "",                 // I: CRI
+      specs.power_factor || "",        // J: Power Factor
+      specs.beam_angle || "",          // K: Beam Angle
+      specs.material || "",            // L: Material
+      specs.product_size || "",        // M: Product Size
+      specs.ip_rating || "",           // N: IP
+      Number(item.unitPrice),          // O: Unit Price
+      item.notes || "",                // P: Remark
     ];
 
     values.forEach((v, i) => {
@@ -245,61 +227,36 @@ export async function GET(
       cell.value = v;
       cell.font = dataFont;
       cell.alignment = {
-        horizontal: i >= 6 ? "center" : "left",
+        horizontal: "center",
         vertical: "middle",
         wrapText: true,
       };
       cell.border = borderThin;
     });
 
-    // Insert product image if available
-    const imageUrl = product.images?.[0]?.url;
-    if (imageUrl) {
-      try {
-        // Read local image file
-        const imagePath = imageUrl.replace("/api/files/", "");
-        const fullPath = path.join(process.cwd(), "uploads", imagePath);
-        const imageBuffer = await readFile(fullPath);
-        const ext = path.extname(fullPath).toLowerCase().replace(".", "");
-        const extension = ext === "jpg" ? "jpeg" : ext as "jpeg" | "png" | "gif";
+    // Insert product image 1 (column A)
+    const image1Url = product.images?.[0]?.url;
+    if (image1Url) {
+      await addProductImage(image1Url, 0, rowIdx);
+    }
 
-        const imageId = wb.addImage({
-          buffer: imageBuffer as unknown as ExcelJS.Buffer,
-          extension,
-        });
-
-        ws.addImage(imageId, {
-          tl: { col: 1, row: rowIdx - 1 } as ExcelJS.Anchor,
-          br: { col: 2, row: rowIdx } as ExcelJS.Anchor,
-          editAs: "oneCell",
-        });
-      } catch {
-        // Image not found, skip
-      }
+    // Insert product image 2 (column B)
+    const image2Url = product.images?.[1]?.url;
+    if (image2Url) {
+      await addProductImage(image2Url, 1, rowIdx);
     }
 
     rowIdx++;
   }
 
-  // ── Summary row ──
-  const sumRow = ws.getRow(rowIdx);
-  sumRow.height = 30;
-  ws.getCell(rowIdx, 1).value = "TOTAL";
-  ws.getCell(rowIdx, 1).font = { ...headerFont, size: 10 };
-  ws.getCell(rowIdx, 7).value = totalQty;
-  ws.getCell(rowIdx, 9).value = totalCtns;
-  ws.getCell(rowIdx, 13).value = +totalCbm.toFixed(4);
-  ws.getCell(rowIdx, 16).value = +totalNW.toFixed(1);
-  ws.getCell(rowIdx, 17).value = +totalGW.toFixed(1);
-  ws.getCell(rowIdx, 19).value = +grandTotal.toFixed(2);
-
-  for (let c = 1; c <= 20; c++) {
-    const cell = ws.getCell(rowIdx, c);
-    cell.font = { ...headerFont, size: 10 };
-    cell.alignment = centerAlign;
-    cell.border = borderThin;
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFE699" } };
-  }
+  // ── Footer row ──
+  ws.mergeCells(`A${rowIdx}:P${rowIdx}`);
+  const footerCell = ws.getCell(rowIdx, 1);
+  footerCell.value = isZh ? "以上报价为含税出厂价" : "All prices above are factory prices including tax";
+  footerCell.font = { bold: true, size: 12, name: "Arial" };
+  footerCell.alignment = { horizontal: "center", vertical: "middle" };
+  footerCell.border = borderThin;
+  ws.getRow(rowIdx).height = 30;
 
   // ── Generate buffer ──
   const buffer = await wb.xlsx.writeBuffer();
@@ -307,7 +264,7 @@ export async function GET(
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${quote.quoteNumber}.xlsx"`,
+      "Content-Disposition": `attachment; filename="${quote.quoteNumber}-quotation.xlsx"`,
     },
   });
 }

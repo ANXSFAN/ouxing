@@ -10,6 +10,7 @@ import {
   Tags,
   MessageSquare,
   FileText,
+  PackageCheck,
   ChevronLeft,
   Lightbulb,
 } from "lucide-react";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/admin/attributes", label: "属性管理", icon: Tags },
   { href: "/admin/inquiries", label: "询价管理", icon: MessageSquare },
   { href: "/admin/quotes", label: "报价管理", icon: FileText },
+  { href: "/admin/packing-lists", label: "箱单管理", icon: PackageCheck },
 ];
 
 interface AdminSidebarProps {
@@ -46,7 +48,7 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
             <Lightbulb className="w-5 h-5 text-amber-500" />
           </div>
           {!collapsed && (
-            <span className="font-bold text-lg text-white">SysLED</span>
+            <span className="font-bold text-lg text-white">欧星</span>
           )}
         </Link>
       </div>

@@ -72,8 +72,10 @@ export default function QuoteDetailPage() {
   const [quote, setQuote] = useState<QuoteDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
-  const [downloadingZh, setDownloadingZh] = useState(false);
-  const [downloadingEn, setDownloadingEn] = useState(false);
+  const [downloadingQuoteZh, setDownloadingQuoteZh] = useState(false);
+  const [downloadingQuoteEn, setDownloadingQuoteEn] = useState(false);
+  const [downloadingPackZh, setDownloadingPackZh] = useState(false);
+  const [downloadingPackEn, setDownloadingPackEn] = useState(false);
 
   useEffect(() => {
     fetch(`/api/quotes/${params.id}`)
@@ -158,9 +160,9 @@ export default function QuoteDetailPage() {
           </Button>
           <Button
             variant="outline"
-            disabled={downloadingZh}
+            disabled={downloadingQuoteZh}
             onClick={async () => {
-              setDownloadingZh(true);
+              setDownloadingQuoteZh(true);
               try {
                 const res = await fetch(`/api/quotes/${params.id}/excel?lang=zh`);
                 if (res.ok) {
@@ -168,22 +170,22 @@ export default function QuoteDetailPage() {
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement("a");
                   a.href = url;
-                  a.download = `${quote?.quoteNumber || "quote"}-zh.xlsx`;
+                  a.download = `${quote?.quoteNumber || "quote"}-quotation-zh.xlsx`;
                   a.click();
                   URL.revokeObjectURL(url);
-                } else toast.error("Excel生成失败");
+                } else toast.error("报价单生成失败");
               } catch { toast.error("下载失败"); }
-              setDownloadingZh(false);
+              setDownloadingQuoteZh(false);
             }}
           >
-            {downloadingZh ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-            发货单(中)
+            {downloadingQuoteZh ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            报价单(中)
           </Button>
           <Button
             variant="outline"
-            disabled={downloadingEn}
+            disabled={downloadingQuoteEn}
             onClick={async () => {
-              setDownloadingEn(true);
+              setDownloadingQuoteEn(true);
               try {
                 const res = await fetch(`/api/quotes/${params.id}/excel?lang=en`);
                 if (res.ok) {
@@ -191,16 +193,62 @@ export default function QuoteDetailPage() {
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement("a");
                   a.href = url;
-                  a.download = `${quote?.quoteNumber || "quote"}-en.xlsx`;
+                  a.download = `${quote?.quoteNumber || "quote"}-quotation-en.xlsx`;
                   a.click();
                   URL.revokeObjectURL(url);
-                } else toast.error("Excel生成失败");
+                } else toast.error("报价单生成失败");
               } catch { toast.error("下载失败"); }
-              setDownloadingEn(false);
+              setDownloadingQuoteEn(false);
             }}
           >
-            {downloadingEn ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-            发货单(EN)
+            {downloadingQuoteEn ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            报价单(EN)
+          </Button>
+          <Button
+            variant="outline"
+            disabled={downloadingPackZh}
+            onClick={async () => {
+              setDownloadingPackZh(true);
+              try {
+                const res = await fetch(`/api/quotes/${params.id}/packing-list?lang=zh`);
+                if (res.ok) {
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `${quote?.quoteNumber || "quote"}-packing-zh.xlsx`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } else toast.error("箱单生成失败");
+              } catch { toast.error("下载失败"); }
+              setDownloadingPackZh(false);
+            }}
+          >
+            {downloadingPackZh ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            箱单(中)
+          </Button>
+          <Button
+            variant="outline"
+            disabled={downloadingPackEn}
+            onClick={async () => {
+              setDownloadingPackEn(true);
+              try {
+                const res = await fetch(`/api/quotes/${params.id}/packing-list?lang=en`);
+                if (res.ok) {
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `${quote?.quoteNumber || "quote"}-packing-en.xlsx`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } else toast.error("箱单生成失败");
+              } catch { toast.error("下载失败"); }
+              setDownloadingPackEn(false);
+            }}
+          >
+            {downloadingPackEn ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            箱单(EN)
           </Button>
         </div>
       </div>

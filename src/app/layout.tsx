@@ -10,9 +10,9 @@ const sans = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "FactorLED - 专业LED照明产品与解决方案",
+  title: "欧星 - 专业LED照明产品与解决方案",
   description:
-    "FactorLED提供高品质LED面板灯、筒灯、射灯、灯管等照明产品，涵盖商业照明、工业照明等多种应用场景。",
+    "欧星提供高品质LED面板灯、筒灯、射灯、灯管等照明产品，涵盖商业照明、工业照明等多种应用场景。",
 };
 
 export default function RootLayout({

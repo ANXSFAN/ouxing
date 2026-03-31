@@ -110,11 +110,11 @@ model ProductCertificate {
 
 model Inquiry {
   id         String           @id @default(cuid())
-  name       String
-  email      String
+  name       String?
+  email      String?
   company    String?
   phone      String?
-  message    String
+  message    String?
   status     InquiryStatus    @default(PENDING)
   adminNotes String?          @map("admin_notes")
   createdAt  DateTime         @default(now()) @map("created_at")

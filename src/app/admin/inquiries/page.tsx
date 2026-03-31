@@ -32,8 +32,8 @@ function pName(c: unknown) { const v = c as ContentJson | null; return v?.zh?.na
 
 interface Inquiry {
   id: string;
-  name: string;
-  email: string;
+  name: string | null;
+  email: string | null;
   company: string | null;
   phone: string | null;
   status: string;
@@ -119,9 +119,8 @@ export default function InquiriesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>客户</TableHead>
                   <TableHead>公司</TableHead>
-                  <TableHead>邮箱</TableHead>
+                  <TableHead>电话</TableHead>
                   <TableHead>产品</TableHead>
                   <TableHead>状态</TableHead>
                   <TableHead>时间</TableHead>
@@ -131,9 +130,8 @@ export default function InquiriesPage() {
               <TableBody>
                 {inquiries.map((inquiry) => (
                   <TableRow key={inquiry.id}>
-                    <TableCell className="font-medium">{inquiry.name}</TableCell>
-                    <TableCell className="text-slate-500">{inquiry.company || "-"}</TableCell>
-                    <TableCell className="text-slate-500">{inquiry.email}</TableCell>
+                    <TableCell className="font-medium">{inquiry.company || "-"}</TableCell>
+                    <TableCell className="text-slate-500">{inquiry.phone || "-"}</TableCell>
                     <TableCell>
                       {inquiry.products.length > 0 ? (
                         <span className="text-sm text-slate-600">

@@ -33,11 +33,11 @@ import { toast } from "sonner";
 
 interface InquiryDetail {
   id: string;
-  name: string;
-  email: string;
+  name: string | null;
+  email: string | null;
   company: string | null;
   phone: string | null;
-  message: string;
+  message: string | null;
   status: string;
   adminNotes: string | null;
   createdAt: string;
@@ -136,14 +136,6 @@ export default function InquiryDetailPage() {
             <CardTitle className="text-base">客户信息</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <User className="w-4 h-4 text-slate-400" />
-              <span className="text-sm">{inquiry.name}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Mail className="w-4 h-4 text-slate-400" />
-              <span className="text-sm">{inquiry.email}</span>
-            </div>
             {inquiry.company && (
               <div className="flex items-center gap-3">
                 <Building2 className="w-4 h-4 text-slate-400" />
@@ -154,6 +146,18 @@ export default function InquiryDetailPage() {
               <div className="flex items-center gap-3">
                 <Phone className="w-4 h-4 text-slate-400" />
                 <span className="text-sm">{inquiry.phone}</span>
+              </div>
+            )}
+            {inquiry.name && (
+              <div className="flex items-center gap-3">
+                <User className="w-4 h-4 text-slate-400" />
+                <span className="text-sm">{inquiry.name}</span>
+              </div>
+            )}
+            {inquiry.email && (
+              <div className="flex items-center gap-3">
+                <Mail className="w-4 h-4 text-slate-400" />
+                <span className="text-sm">{inquiry.email}</span>
               </div>
             )}
             <div className="flex items-center gap-3">

@@ -12,7 +12,7 @@ export function PublicFooter() {
             <div className="mb-4">
               <Image
                 src="/logo.jpg"
-                alt="FactorLED"
+                alt="欧星"
                 width={150}
                 height={26}
                 className="h-6 w-auto brightness-0 invert opacity-80"
@@ -67,7 +67,7 @@ export function PublicFooter() {
             </h4>
             <ul className="space-y-3">
               {[
-                { icon: Mail, text: "info@factorled.com" },
+                { icon: Mail, text: "info@ouxing.com" },
                 { icon: Phone, text: "+86 755-1234-5678" },
                 { icon: MapPin, text: "广东省深圳市宝安区" },
               ].map((item) => (
@@ -86,7 +86,7 @@ export function PublicFooter() {
         </div>
 
         <div className="mt-12 pt-6 border-t border-neutral-800 text-xs text-neutral-600 text-center">
-          &copy; {new Date().getFullYear()} FactorLED. All rights reserved.
+          &copy; {new Date().getFullYear()} 欧星. All rights reserved.
         </div>
       </div>
     </footer>

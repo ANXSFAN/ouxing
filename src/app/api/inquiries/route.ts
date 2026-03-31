@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     const inquiry = await prisma.inquiry.create({
       data: {
         ...data,
-        message: data.message || "",
+        message: data.message || null,
         products: productIds?.length
           ? {
               create: productIds.map((p) => ({
