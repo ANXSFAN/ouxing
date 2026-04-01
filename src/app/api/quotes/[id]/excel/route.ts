@@ -90,7 +90,7 @@ export async function GET(
   // ── Row 1: Title ──
   ws.mergeCells("A1:P1");
   const titleCell = ws.getCell("A1");
-  titleCell.value = "前洋-欧达星产品报价表";
+  titleCell.value = "欧达星产品报价表";
   titleCell.font = { size: 28, name: "宋体" };
   titleCell.alignment = { horizontal: "center", vertical: "middle" };
   titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFFF00" } };
@@ -209,14 +209,14 @@ export async function GET(
       specs.power || "",               // C: Power
       description,                     // D: Specification / Description
       specs.voltage || "",             // E: Voltage
-      specs.lumen || "",               // F: Lumen
+      specs.luminous_flux || specs.lumen || "",  // F: Lumen
       specs.cct || "",                 // G: CCT / Color
       specs.chip || "",                // H: Chip
       specs.cri || "",                 // I: CRI
       specs.power_factor || "",        // J: Power Factor
       specs.beam_angle || "",          // K: Beam Angle
       specs.material || "",            // L: Material
-      specs.product_size || "",        // M: Product Size
+      specs.dimensions || specs.product_size || "",  // M: Product Size
       specs.ip_rating || "",           // N: IP
       Number(item.unitPrice),          // O: Unit Price
       item.notes || "",                // P: Remark
