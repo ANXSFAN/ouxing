@@ -170,13 +170,6 @@ export async function GET(
   const DATA_START_ROW = 6;
   let rowIdx = DATA_START_ROW;
 
-  let totalQty = 0;
-  let totalCtns = 0;
-  let totalCbm = 0;
-  let totalNW = 0;
-  let totalGW = 0;
-  let grandTotal = 0;
-
   const altLang = lang === "zh" ? "en" : "zh";
   const loc = (content: unknown, field: "name" | "description") => {
     const c = content as Record<string, Record<string, string>> | null;
@@ -189,63 +182,76 @@ export async function GET(
     const description = loc(product.content, "description") || item.specification || "";
     const categoryName = product.category ? loc(product.category.content, "name") : "";
 
+    const r = rowIdx;
     const qty = item.quantity;
     const unitPrice = Number(item.unitPrice);
     const qtyPerCarton = parseFloat(specs.qty_per_carton) || 1;
-    const ctns = Math.ceil(qty / qtyPerCarton);
     const cL = parseFloat(specs.carton_length) || 0;
     const cW = parseFloat(specs.carton_width) || 0;
     const cH = parseFloat(specs.carton_height) || 0;
     const nw = parseFloat(specs.net_weight) || 0;
     const gw = parseFloat(specs.gross_weight) || 0;
+
+    // Pre-calculate results for formula fallback display
+    const ctns = Math.ceil(qty / qtyPerCarton);
     const cbm = ctns * cL * cW * cH / 1000000;
     const tNW = ctns * nw;
     const tGW = ctns * gw;
     const lineTotal = qty * unitPrice;
 
-    totalQty += qty;
-    totalCtns += ctns;
-    totalCbm += cbm;
-    totalNW += tNW;
-    totalGW += tGW;
-    grandTotal += lineTotal;
-
-    const row = ws.getRow(rowIdx);
+    const row = ws.getRow(r);
     row.height = 80;
 
-    const values = [
-      product.modelNumber,
-      "",
-      categoryName || item.productName,
-      description,
-      specs.power || "",
-      specs.cct || "",
-      qty,
-      qtyPerCarton,
-      ctns,
-      cL || "",
-      cW || "",
-      cH || "",
-      cbm ? +cbm.toFixed(4) : "",
-      nw || "",
-      gw || "",
-      tNW ? +tNW.toFixed(1) : "",
-      tGW ? +tGW.toFixed(1) : "",
-      unitPrice,
-      +lineTotal.toFixed(2),
-      item.notes || "",
+    // Static value columns
+    const values: [number, unknown][] = [
+      [1, product.modelNumber],
+      [2, ""],
+      [3, categoryName || item.productName],
+      [4, description],
+      [5, specs.power || ""],
+      [6, specs.cct || ""],
+      [7, qty],                  // G: QTY/PCS
+      [8, qtyPerCarton],         // H: QTY/CTN
+      [10, cL || ""],            // J: L
+      [11, cW || ""],            // K: W
+      [12, cH || ""],            // L: H
+      [14, nw || ""],            // N: N.W
+      [15, gw || ""],            // O: G.W
+      [18, unitPrice],           // R: Unit Price
+      [20, item.notes || ""],    // T: Remark
     ];
 
-    values.forEach((v, i) => {
-      const cell = ws.getCell(rowIdx, i + 1);
-      cell.value = v;
+    values.forEach(([col, v]) => {
+      const cell = ws.getCell(r, col as number);
+      cell.value = v as ExcelJS.CellValue;
       cell.font = dataFont;
       cell.alignment = {
-        horizontal: i >= 6 ? "center" : "left",
+        horizontal: (col as number) >= 7 ? "center" : "left",
         vertical: "middle",
         wrapText: true,
       };
       cell.border = borderThin;
+    });
+
+    // Formula columns — Excel will recalculate these dynamically
+    const formulaCells: [number, string, number][] = [
+      [9,  `IFERROR(CEILING(G${r}/H${r},1),0)`, ctns],                    // I: CTNS
+      [13, `I${r}*J${r}*K${r}*L${r}/1000000`, +cbm.toFixed(4)],          // M: CBM
+      [16, `I${r}*N${r}`, +tNW.toFixed(1)],                               // P: T.N.W
+      [17, `I${r}*O${r}`, +tGW.toFixed(1)],                               // Q: T.G.W
+      [19, `G${r}*R${r}`, +lineTotal.toFixed(2)],                         // S: Total
+    ];
+
+    formulaCells.forEach(([col, formula, result]) => {
+      const cell = ws.getCell(r, col);
+      cell.value = { formula, result } as ExcelJS.CellFormulaValue;
+      cell.font = dataFont;
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      cell.border = borderThin;
+      // Number formats
+      if (col === 13) cell.numFmt = "0.0000";
+      else if (col === 16 || col === 17) cell.numFmt = "0.0";
+      else if (col === 19) cell.numFmt = "0.00";
     });
 
     // Insert product image if available
@@ -264,8 +270,8 @@ export async function GET(
         });
 
         ws.addImage(imageId, {
-          tl: { col: 1, row: rowIdx - 1 } as ExcelJS.Anchor,
-          br: { col: 2, row: rowIdx } as ExcelJS.Anchor,
+          tl: { col: 1, row: r - 1 } as ExcelJS.Anchor,
+          br: { col: 2, row: r } as ExcelJS.Anchor,
           editAs: "oneCell",
         });
       } catch {
@@ -276,17 +282,26 @@ export async function GET(
     rowIdx++;
   }
 
-  // ── Summary row ──
+  // ── Summary row — uses SUM formulas so totals auto-update on row add/delete ──
+  const lastDataRow = rowIdx - 1;
   const sumRow = ws.getRow(rowIdx);
   sumRow.height = 30;
   ws.getCell(rowIdx, 1).value = "TOTAL";
-  ws.getCell(rowIdx, 1).font = { ...headerFont, size: 10 };
-  ws.getCell(rowIdx, 7).value = totalQty;
-  ws.getCell(rowIdx, 9).value = totalCtns;
-  ws.getCell(rowIdx, 13).value = +totalCbm.toFixed(4);
-  ws.getCell(rowIdx, 16).value = +totalNW.toFixed(1);
-  ws.getCell(rowIdx, 17).value = +totalGW.toFixed(1);
-  ws.getCell(rowIdx, 19).value = +grandTotal.toFixed(2);
+
+  const sumFormulas: [number, string, string?][] = [
+    [7,  `SUM(G${DATA_START_ROW}:G${lastDataRow})`],               // QTY
+    [9,  `SUM(I${DATA_START_ROW}:I${lastDataRow})`],               // CTNS
+    [13, `SUM(M${DATA_START_ROW}:M${lastDataRow})`, "0.0000"],     // CBM
+    [16, `SUM(P${DATA_START_ROW}:P${lastDataRow})`, "0.0"],        // T.N.W
+    [17, `SUM(Q${DATA_START_ROW}:Q${lastDataRow})`, "0.0"],        // T.G.W
+    [19, `SUM(S${DATA_START_ROW}:S${lastDataRow})`, "0.00"],       // Grand Total
+  ];
+
+  sumFormulas.forEach(([col, formula, numFmt]) => {
+    const cell = ws.getCell(rowIdx, col as number);
+    cell.value = { formula } as ExcelJS.CellFormulaValue;
+    if (numFmt) cell.numFmt = numFmt as string;
+  });
 
   for (let c = 1; c <= 20; c++) {
     const cell = ws.getCell(rowIdx, c);

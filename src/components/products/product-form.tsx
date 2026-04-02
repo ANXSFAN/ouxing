@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageUpload } from "@/components/upload/image-upload";
 import { FileUpload } from "@/components/upload/file-upload";
 import { DOC_TYPE_LABELS, CERT_TYPES } from "@/lib/constants";
-import { Loader2, Save, ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { Loader2, Save, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -57,7 +57,6 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
   const [descEn, setDescEn] = useState("");
   // Specs (from attribute definitions)
   const [specs, setSpecs] = useState<Record<string, string>>({});
-  const [addedSpecKeys, setAddedSpecKeys] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/categories").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setCategories(d); });
@@ -80,9 +79,6 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
       setDescEn(content?.en?.description || "");
       const existingSpecs = (initialData.specs as Record<string, string>) || {};
       setSpecs(existingSpecs);
-      // Initialize addedSpecKeys from existing specs (exclude shipping keys)
-      const SHIPPING_KEYS = ["qty_per_carton", "carton_length", "carton_width", "carton_height", "net_weight", "gross_weight"];
-      setAddedSpecKeys(Object.keys(existingSpecs).filter((k) => existingSpecs[k] && !SHIPPING_KEYS.includes(k)));
 
       if (initialData.images) {
         setImages((initialData.images as { url: string; alt?: string }[]).map((img) => ({ url: img.url, fileName: img.alt || "" })));
@@ -119,7 +115,10 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
         en: { name: nameEn, description: descEn },
       },
       price: price ? parseFloat(price) : null,
-      specs: Object.keys(specs).length > 0 ? specs : null,
+      specs: (() => {
+        const filled = Object.fromEntries(Object.entries(specs).filter(([, v]) => v && v.trim() !== ""));
+        return Object.keys(filled).length > 0 ? filled : null;
+      })(),
       categoryId: categoryId || null,
       isActive, isFeatured,
       images: images.map((img) => ({ url: img.url, fileName: img.fileName })),
@@ -223,92 +222,53 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
           </Card>
         </TabsContent>
 
-        {/* 技术参数 - 按需添加 */}
+        {/* 技术参数 - 显示所有参数，填了就存，不填就不存 */}
         <TabsContent value="specs">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">技术参数</CardTitle>
-                {/* 添加参数按钮 + 下拉选择 */}
-                {productAttrs.filter((a) => !addedSpecKeys.includes(a.key)).length > 0 && (
-                  <Select onValueChange={(v: string | null) => {
-                    if (v && typeof v === "string" && !addedSpecKeys.includes(v)) {
-                      setAddedSpecKeys([...addedSpecKeys, v]);
-                    }
-                  }}>
-                    <SelectTrigger className="w-auto gap-2">
-                      <Plus className="w-4 h-4" />
-                      <SelectValue placeholder="添加参数" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {productAttrs.filter((a) => !addedSpecKeys.includes(a.key)).map((attr) => (
-                        <SelectItem key={attr.key} value={attr.key}>
-                          {attr.name.zh || attr.name.en || attr.key}
-                          {attr.unit && <span className="text-slate-400 ml-1">({attr.unit})</span>}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
+              <CardTitle className="text-base">技术参数</CardTitle>
+              <p className="text-sm text-slate-400">填写的参数会保存，留空则不保存</p>
             </CardHeader>
             <CardContent>
-              {addedSpecKeys.length === 0 ? (
+              {productAttrs.length === 0 ? (
                 <p className="text-sm text-slate-400 py-6 text-center">
-                  点击右上角「添加参数」选择要填写的技术参数
+                  暂无产品属性。请先在 <Link href="/admin/attributes" className="text-blue-600 underline">属性管理</Link> 中创建。
                 </p>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
-                  {addedSpecKeys.map((key) => {
-                    const attr = productAttrs.find((a) => a.key === key);
-                    if (!attr) return null;
-                    return (
-                      <div key={key} className="flex items-center gap-2">
-                        <Label className="w-24 shrink-0 text-right text-sm truncate" title={attr.name.zh || attr.key}>
-                          {attr.name.zh || attr.name.en || attr.key}
-                          {attr.unit && <span className="text-slate-400 ml-0.5">({attr.unit})</span>}
-                        </Label>
-                        <div className="flex-1 min-w-0">
-                          {attr.type === "SELECT" ? (
-                            <Select value={specs[key] || ""} onValueChange={(v) => v && setSpecs({ ...specs, [key]: v === "__clear__" ? "" : v })}>
-                              <SelectTrigger><SelectValue placeholder="选择..." /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="__clear__">不选</SelectItem>
-                                {attr.options.map((opt) => (
-                                  <SelectItem key={opt.value} value={opt.value}>
-                                    <div className="flex items-center gap-2">
-                                      {opt.color && <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: opt.color }} />}
-                                      {opt.value}
-                                    </div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Input
-                              type={attr.type === "NUMBER" ? "number" : "text"}
-                              value={specs[key] || ""}
-                              onChange={(e) => setSpecs({ ...specs, [key]: e.target.value })}
-                            />
-                          )}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-400 hover:text-red-600 shrink-0 h-8 w-8 p-0"
-                          onClick={() => {
-                            setAddedSpecKeys(addedSpecKeys.filter((k) => k !== key));
-                            const newSpecs = { ...specs };
-                            delete newSpecs[key];
-                            setSpecs(newSpecs);
-                          }}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                  {productAttrs.map((attr) => (
+                    <div key={attr.key} className="flex items-center gap-2">
+                      <Label className="w-24 shrink-0 text-right text-sm truncate" title={attr.name.zh || attr.key}>
+                        {attr.name.zh || attr.name.en || attr.key}
+                        {attr.unit && <span className="text-slate-400 ml-0.5">({attr.unit})</span>}
+                      </Label>
+                      <div className="flex-1 min-w-0">
+                        {attr.type === "SELECT" ? (
+                          <Select value={specs[attr.key] || ""} onValueChange={(v) => v && setSpecs({ ...specs, [attr.key]: v === "__clear__" ? "" : v })}>
+                            <SelectTrigger><SelectValue placeholder="选择..." /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__clear__">不选</SelectItem>
+                              {attr.options.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  <div className="flex items-center gap-2">
+                                    {opt.color && <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: opt.color }} />}
+                                    {opt.value}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            type={attr.type === "NUMBER" ? "number" : "text"}
+                            value={specs[attr.key] || ""}
+                            onChange={(e) => setSpecs({ ...specs, [attr.key]: e.target.value })}
+                            placeholder=""
+                          />
+                        )}
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>

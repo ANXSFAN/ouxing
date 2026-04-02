@@ -72,6 +72,18 @@ function InquiryContent() {
     setCartItems(updated);
   };
 
+  const setQty = (productId: string, value: string) => {
+    const num = parseInt(value, 10);
+    const updated = items.map((i) => {
+      if (i.productId === productId) {
+        return { ...i, quantity: isNaN(num) || num < 1 ? 1 : num };
+      }
+      return i;
+    });
+    setItems(updated);
+    setCartItems(updated);
+  };
+
   const updateExpectedPrice = (productId: string, price: string) => {
     const updated = items.map((i) => {
       if (i.productId === productId) {
@@ -229,7 +241,13 @@ function InquiryContent() {
                           >
                             <Minus className="w-3 h-3" />
                           </button>
-                          <span className="w-10 text-center text-sm font-medium tabular-nums">{item.quantity}</span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => setQty(item.productId, e.target.value)}
+                            className="w-14 h-7 text-center text-sm font-medium tabular-nums border border-neutral-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-neutral-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
                           <button
                             type="button"
                             onClick={() => updateQty(item.productId, 1)}
