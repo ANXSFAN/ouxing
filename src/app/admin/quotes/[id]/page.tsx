@@ -32,6 +32,7 @@ import {
   Building2,
   MapPin,
   Calendar,
+  Pencil,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -154,6 +155,11 @@ export default function QuoteDetailPage() {
               ))}
             </SelectContent>
           </Select>
+          <Button asChild variant="outline">
+            <Link href={`/admin/quotes/${params.id}/edit`}>
+              <Pencil className="w-4 h-4 mr-2" />编辑
+            </Link>
+          </Button>
           <Button onClick={downloadPdf} disabled={downloading} variant="outline">
             {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
             PDF

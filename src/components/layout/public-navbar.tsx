@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Menu, X, Phone, Mail, ClipboardList } from "lucide-react";
+import { Menu, X, Phone, Mail, ClipboardList, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getCartCount } from "@/lib/inquiry-cart";
 
@@ -50,9 +50,13 @@ export function PublicNavbar() {
               info@ouxing.com
             </span>
           </div>
-          <span className="hidden sm:block text-neutral-500">
-            专业LED照明产品制造商
-          </span>
+          <Link
+            href="/admin"
+            className="flex items-center gap-1 text-neutral-500 hover:text-neutral-300 transition-colors"
+          >
+            <Settings className="w-3 h-3" />
+            <span className="hidden sm:inline">管理后台</span>
+          </Link>
         </div>
       </div>
 

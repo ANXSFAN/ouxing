@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { FileText, Plus, Eye, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { FileText, Plus, Eye, Pencil, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { QUOTE_STATUS_LABELS } from "@/lib/constants";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -132,6 +132,9 @@ export default function QuotesPage() {
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="sm" asChild>
                           <Link href={`/admin/quotes/${quote.id}`}><Eye className="w-4 h-4" /></Link>
+                        </Button>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/admin/quotes/${quote.id}/edit`}><Pencil className="w-4 h-4" /></Link>
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => setDeleteId(quote.id)} className="text-red-600">
                           <Trash2 className="w-4 h-4" />
