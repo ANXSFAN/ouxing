@@ -369,7 +369,7 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
                   暂无产品属性。请先在 <Link href="/admin/attributes" className="text-blue-600 underline">属性管理</Link> 中创建。
                 </p>
               ) : (
-                <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                   {productAttrs.map((attr) => {
                     const specVal = specs[attr.key];
                     const currentArr = Array.isArray(specVal) ? specVal : specVal ? [specVal] : [];
