@@ -14,6 +14,7 @@ export async function GET(
       images: { orderBy: { sortOrder: "asc" } },
       documents: { orderBy: { createdAt: "desc" } },
       certificates: { orderBy: { createdAt: "desc" } },
+      variants: { orderBy: { sortOrder: "asc" } },
     },
   });
   if (!product) return NextResponse.json({ error: "产品不存在" }, { status: 404 });
@@ -69,6 +70,26 @@ export async function PUT(
             productId: id, name: doc.name || doc.fileName, fileName: doc.fileName,
             filePath: doc.url, fileSize: doc.fileSize, mimeType: doc.mimeType,
             docType: (doc.docType as "DATASHEET" | "SPEC_SHEET" | "MANUAL" | "IES_FILE" | "OTHER") || "DATASHEET",
+          })
+        ),
+      });
+    }
+  }
+
+  // Update variants
+  if (body.variants !== undefined) {
+    await prisma.productVariant.deleteMany({ where: { productId: id } });
+    if (body.variants?.length) {
+      await prisma.productVariant.createMany({
+        data: body.variants.map(
+          (v: { sku: string; label: string; price?: number | null; attributes?: Record<string, string> | null; sortOrder?: number; isActive?: boolean }, index: number) => ({
+            productId: id,
+            sku: v.sku,
+            label: v.label,
+            price: v.price ?? null,
+            attributes: v.attributes ?? undefined,
+            sortOrder: v.sortOrder ?? index,
+            isActive: v.isActive ?? true,
           })
         ),
       });

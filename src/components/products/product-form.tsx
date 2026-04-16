@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageUpload } from "@/components/upload/image-upload";
 import { FileUpload } from "@/components/upload/file-upload";
 import { DOC_TYPE_LABELS, CERT_TYPES } from "@/lib/constants";
-import { Loader2, Save, ArrowLeft } from "lucide-react";
+import { Loader2, Save, ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -28,6 +28,7 @@ interface AttributeDef {
 
 interface UploadedImage { url: string; fileName: string }
 interface UploadedFile { url: string; fileName: string; fileSize: number; mimeType: string; name?: string; docType?: string; certType?: string }
+interface VariantItem { sku: string; label: string; price: string; isActive: boolean }
 
 interface ProductFormProps {
   initialData?: Record<string, unknown>;
@@ -41,6 +42,7 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [documents, setDocuments] = useState<UploadedFile[]>([]);
   const [certificates, setCertificates] = useState<UploadedFile[]>([]);
+  const [variants, setVariants] = useState<VariantItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Form state
@@ -95,6 +97,13 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
           fileName: c.fileName, fileSize: c.fileSize, mimeType: c.mimeType, name: c.name, certType: c.certType,
         })));
       }
+      if (initialData.variants) {
+        setVariants((initialData.variants as { sku: string; label: string; price: unknown; isActive: boolean }[]).map((v) => ({
+          sku: v.sku, label: v.label,
+          price: v.price != null ? String(v.price) : "",
+          isActive: v.isActive ?? true,
+        })));
+      }
     }
   }, [initialData]);
 
@@ -121,6 +130,15 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
       })(),
       categoryId: categoryId || null,
       isActive, isFeatured,
+      variants: variants
+        .filter((v) => v.sku.trim() && v.label.trim())
+        .map((v, i) => ({
+          sku: v.sku.trim(),
+          label: v.label.trim(),
+          price: v.price ? parseFloat(v.price) : null,
+          sortOrder: i,
+          isActive: v.isActive,
+        })),
       images: images.map((img) => ({ url: img.url, fileName: img.fileName })),
       documents: documents.map((d) => ({ url: d.url, fileName: d.fileName, fileSize: d.fileSize, mimeType: d.mimeType, name: d.name || d.fileName, docType: d.docType || "DATASHEET" })),
       certificates: certificates.map((c) => ({ url: c.url, fileName: c.fileName, fileSize: c.fileSize, mimeType: c.mimeType, name: c.name || c.fileName, certType: c.certType || "其他" })),
@@ -158,6 +176,7 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
           <TabsTrigger value="content">多语言内容</TabsTrigger>
           <TabsTrigger value="specs">技术参数</TabsTrigger>
           <TabsTrigger value="shipping">包装运输</TabsTrigger>
+          <TabsTrigger value="variants">变体</TabsTrigger>
           <TabsTrigger value="media">图片</TabsTrigger>
           <TabsTrigger value="docs">文档与证书</TabsTrigger>
         </TabsList>
@@ -297,6 +316,75 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* 变体 */}
+        <TabsContent value="variants">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">产品变体</CardTitle>
+              <p className="text-sm text-slate-400">
+                同一型号下的不同规格组合（如不同功率/色温）。每个变体有独立SKU和价格。
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {variants.length === 0 ? (
+                <p className="text-sm text-slate-400 py-4 text-center">暂无变体。点击下方按钮添加。</p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-[1fr_1fr_140px_80px_40px] gap-2 text-xs text-slate-500 px-1">
+                    <span>SKU <span className="text-red-500">*</span></span>
+                    <span>显示名 <span className="text-red-500">*</span></span>
+                    <span>价格（后台）</span>
+                    <span>上架</span>
+                    <span></span>
+                  </div>
+                  {variants.map((v, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_1fr_140px_80px_40px] gap-2 items-center">
+                      <Input
+                        value={v.sku}
+                        onChange={(e) => { const next = [...variants]; next[i] = { ...v, sku: e.target.value }; setVariants(next); }}
+                        placeholder="如：PNL-18W-4K"
+                      />
+                      <Input
+                        value={v.label}
+                        onChange={(e) => { const next = [...variants]; next[i] = { ...v, label: e.target.value }; setVariants(next); }}
+                        placeholder="如：18W / 4000K"
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={v.price}
+                        onChange={(e) => { const next = [...variants]; next[i] = { ...v, price: e.target.value }; setVariants(next); }}
+                      />
+                      <div className="flex justify-center">
+                        <Switch
+                          checked={v.isActive}
+                          onCheckedChange={(c) => { const next = [...variants]; next[i] = { ...v, isActive: c }; setVariants(next); }}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setVariants(variants.filter((_, idx) => idx !== i))}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setVariants([...variants, { sku: "", label: "", price: "", isActive: true }])}
+              >
+                <Plus className="w-4 h-4 mr-1" /> 添加变体
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

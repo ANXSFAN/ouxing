@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 type ContentJson = Record<string, { name?: string; description?: string }>;
 interface AttrDef { key: string; name: Record<string, string>; unit: string | null; isHighlight: boolean }
+interface VariantRow { id: string; sku: string; label: string; price: string | null; isActive: boolean }
 interface ProductDetail {
   id: string; slug: string; modelNumber: string;
   content: ContentJson; specs: Record<string, string> | null;
@@ -24,6 +25,7 @@ interface ProductDetail {
   images: { id: string; url: string; alt: string | null }[];
   documents: { id: string; name: string; filePath: string; fileSize: number; docType: string }[];
   certificates: { id: string; name: string; certType: string; filePath: string; fileSize: number }[];
+  variants: VariantRow[];
 }
 
 function getName(c: unknown) { const v = c as ContentJson | null; return v?.zh?.name || v?.en?.name || ""; }
@@ -36,6 +38,7 @@ export default function ProductDetailPage() {
   const [attrs, setAttrs] = useState<AttrDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImg, setSelectedImg] = useState(0);
+  const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -67,6 +70,9 @@ export default function ProductDetailPage() {
     });
 
   const highlightSpecs = allSpecs.filter((s) => s.isHighlight);
+  const activeVariants = (product.variants || []).filter((v) => v.isActive);
+  const currentVariant = activeVariants.find((v) => v.id === selectedVariant) || null;
+  const displaySku = currentVariant?.sku || product.modelNumber;
 
   return (
     <div className="bg-white min-h-screen">
@@ -133,9 +139,39 @@ export default function ProductDetailPage() {
           <div>
             <span className="text-[11px] font-bold text-blue-600 uppercase tracking-widest">{catName}</span>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mt-1 mb-1">{name}</h1>
-            <p className="text-sm text-gray-400 font-mono mb-6">SKU {product.modelNumber}</p>
+            <p className="text-sm text-gray-400 font-mono mb-6">SKU {displaySku}</p>
 
             {desc && <p className="text-sm text-gray-500 leading-relaxed mb-6 whitespace-pre-line">{desc}</p>}
+
+            {/* Variants */}
+            {activeVariants.length > 0 && (
+              <div className="mb-6">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-2">
+                  规格选择
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {activeVariants.map((v) => {
+                    const active = v.id === selectedVariant;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setSelectedVariant(active ? null : v.id)}
+                        className={cn(
+                          "px-3 py-2 rounded-lg border text-left transition-all",
+                          active
+                            ? "border-blue-600 bg-blue-50"
+                            : "border-gray-200 hover:border-gray-300 bg-white"
+                        )}
+                      >
+                        <div className="text-xs font-semibold text-gray-900">{v.label}</div>
+                        <div className="text-[10px] font-mono text-gray-400 mt-0.5">{v.sku}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Quick highlight specs (pills, like my-led-erp) */}
             {highlightSpecs.length > 0 && (
@@ -171,8 +207,8 @@ export default function ProductDetailPage() {
                 onClick={() => {
                   addToCart({
                     productId: product.id,
-                    name,
-                    modelNumber: product.modelNumber,
+                    name: currentVariant ? `${name}（${currentVariant.label}）` : name,
+                    modelNumber: displaySku,
                     imageUrl: product.images[0]?.url,
                   });
                   toast.success("已加入询价单");

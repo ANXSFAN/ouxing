@@ -66,57 +66,27 @@ export default async function HomePage() {
         {/* Gradient overlay for text readability */}
         <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/90 via-neutral-950/70 to-neutral-950/40" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32 relative z-10 w-full">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-full px-4 py-1.5 mb-6">
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-              <span className="text-xs text-amber-400 tracking-wide font-medium uppercase">
-                Professional LED Lighting Manufacturer
-              </span>
-            </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-              专业LED照明
-              <br />
-              产品与解决方案
-            </h1>
-            <p className="text-base md:text-lg text-neutral-400 leading-relaxed mb-8 max-w-lg">
-              面板灯、筒灯、射灯、灯管、工矿灯等全系列LED照明产品，通过CE/UL/RoHS等国际认证。
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button
-                asChild
-                size="lg"
-                className="bg-amber-500 text-neutral-950 hover:bg-amber-400 h-11 px-7 text-sm font-semibold rounded-lg"
-              >
-                <Link href="/products">
-                  浏览产品 <ArrowRight className="w-4 h-4 ml-1.5" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                className="bg-transparent border border-neutral-600 text-neutral-200 hover:border-neutral-400 hover:text-white h-11 px-7 text-sm font-semibold rounded-lg"
-              >
-                <Link href="/inquiry">获取报价</Link>
-              </Button>
-            </div>
-          </div>
-
-          {/* Stats row inside hero */}
-          <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              { value: "500+", label: "产品型号" },
-              { value: "50+", label: "出口国家" },
-              { value: "10年", label: "行业经验" },
-              { value: ">50000h", label: "产品寿命" },
-            ].map((s) => (
-              <div key={s.label} className="border-l border-neutral-700/50 pl-5">
-                <div className="text-2xl md:text-3xl font-bold text-white">
-                  {s.value}
-                </div>
-                <div className="text-xs text-neutral-500 mt-1">{s.label}</div>
-              </div>
-            ))}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-48 relative z-10 w-full">
+          <h1 className="text-7xl md:text-9xl lg:text-[12rem] font-black text-white tracking-tight leading-none mb-10">
+            欧星
+          </h1>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              asChild
+              size="lg"
+              className="bg-amber-500 text-neutral-950 hover:bg-amber-400 h-11 px-7 text-sm font-semibold rounded-lg"
+            >
+              <Link href="/products">
+                浏览产品 <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              className="bg-transparent border border-neutral-600 text-neutral-200 hover:border-neutral-400 hover:text-white h-11 px-7 text-sm font-semibold rounded-lg"
+            >
+              <Link href="/inquiry">获取报价</Link>
+            </Button>
           </div>
         </div>
       </section>
