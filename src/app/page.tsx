@@ -59,36 +59,60 @@ export default async function HomePage() {
           src="/hero.jpg"
           alt="Commercial LED Lighting"
           fill
-          className="object-cover opacity-40"
+          className="object-cover opacity-30"
           priority
           unoptimized
         />
-        {/* Gradient overlay for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/90 via-neutral-950/70 to-neutral-950/40" />
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/80 via-neutral-950/50 to-neutral-950/90" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 md:py-48 relative z-10 w-full">
-          <h1 className="text-7xl md:text-9xl lg:text-[12rem] font-black text-white tracking-tight leading-none mb-10">
-            欧星
-          </h1>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              asChild
-              size="lg"
-              className="bg-amber-500 text-neutral-950 hover:bg-amber-400 h-11 px-7 text-sm font-semibold rounded-lg"
-            >
-              <Link href="/products">
-                浏览产品 <ArrowRight className="w-4 h-4 ml-1.5" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              className="bg-transparent border border-neutral-600 text-neutral-200 hover:border-neutral-400 hover:text-white h-11 px-7 text-sm font-semibold rounded-lg"
-            >
-              <Link href="/inquiry">获取报价</Link>
-            </Button>
+        {/* Decorative accent line */}
+        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-28 md:py-40 relative z-10 w-full">
+          <div className="flex flex-col items-start">
+            {/* Eyebrow */}
+            <p className="text-xs md:text-sm tracking-[0.3em] uppercase text-amber-500/80 font-medium mb-6">
+              Professional LED Lighting
+            </p>
+
+            {/* Brand name */}
+            <h1 className="text-6xl md:text-8xl lg:text-9xl font-black text-white tracking-tight leading-none">
+              欧星照明
+            </h1>
+
+            {/* Subtle tagline */}
+            <p className="text-neutral-500 text-sm md:text-base mt-4 max-w-md leading-relaxed">
+              面板灯 / 筒灯 / 射灯 / 灯管 / 工矿灯 — 全系列LED商业照明
+            </p>
+
+            {/* Divider */}
+            <div className="w-12 h-px bg-amber-500/50 mt-8 mb-8" />
+
+            {/* CTA */}
+            <div className="flex flex-wrap gap-3">
+              <Button
+                asChild
+                size="lg"
+                className="bg-amber-500 text-neutral-950 hover:bg-amber-400 h-11 px-7 text-sm font-semibold rounded-lg"
+              >
+                <Link href="/products">
+                  浏览产品 <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                className="bg-transparent border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white h-11 px-7 text-sm font-semibold rounded-lg"
+              >
+                <Link href="/inquiry">获取报价</Link>
+              </Button>
+            </div>
           </div>
         </div>
+
+        {/* Bottom fade */}
+        <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-neutral-700/30 to-transparent" />
       </section>
 
       {/* ── 产品分类 ── */}
