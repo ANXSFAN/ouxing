@@ -180,9 +180,9 @@ export default async function HomePage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {featuredProducts.map((product) => {
-                const specs = product.specs as Record<string, string> | null;
+                const specs = product.specs as Record<string, string | string[]> | null;
                 const highlightSpecs = specs
-                  ? Object.entries(specs).slice(0, 4)
+                  ? Object.entries(specs).slice(0, 4).map(([k, v]) => [k, Array.isArray(v) ? v.join(" / ") : v] as [string, string])
                   : [];
                 return (
                   <Link

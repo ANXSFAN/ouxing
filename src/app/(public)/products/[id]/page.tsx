@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -10,17 +10,17 @@ import { DOC_TYPE_LABELS } from "@/lib/constants";
 import { addToCart } from "@/lib/inquiry-cart";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Download, FileText, Shield, Package, Loader2,
+  Download, FileText, Shield, Package, Loader2,
   MessageSquare, ChevronLeft, ChevronRight, Image as ImageIcon, ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ContentJson = Record<string, { name?: string; description?: string }>;
 interface AttrDef { key: string; name: Record<string, string>; unit: string | null; isHighlight: boolean }
-interface VariantRow { id: string; sku: string; label: string; price: string | null; isActive: boolean }
+interface VariantRow { id: string; sku: string; price: string | null; specs: Record<string, string>; isActive: boolean }
 interface ProductDetail {
   id: string; slug: string; modelNumber: string;
-  content: ContentJson; specs: Record<string, string> | null;
+  content: ContentJson; specs: Record<string, string | string[]> | null;
   category: { id: string; content: ContentJson } | null;
   images: { id: string; url: string; alt: string | null }[];
   documents: { id: string; name: string; filePath: string; fileSize: number; docType: string }[];
@@ -32,13 +32,20 @@ function getName(c: unknown) { const v = c as ContentJson | null; return v?.zh?.
 function getDesc(c: unknown) { const v = c as ContentJson | null; return v?.zh?.description || v?.en?.description || ""; }
 function fmtSize(b: number) { return b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`; }
 
+/** Format a spec value: arrays joined with " / " */
+function fmtSpecVal(val: string | string[], unit?: string): string {
+  const str = Array.isArray(val) ? val.join(" / ") : val;
+  return unit ? `${str} ${unit}` : str;
+}
+
 export default function ProductDetailPage() {
   const params = useParams();
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [attrs, setAttrs] = useState<AttrDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImg, setSelectedImg] = useState(0);
-  const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
+  // Variant dimension selections: { cct: "3000K", wattage: "18W" }
+  const [selections, setSelections] = useState<Record<string, string>>({});
 
   useEffect(() => {
     Promise.all([
@@ -51,28 +58,88 @@ export default function ProductDetailPage() {
     });
   }, [params.id]);
 
+  // ── Variant logic ──
+
+  const activeVariants = useMemo(
+    () => (product?.variants || []).filter((v) => v.isActive),
+    [product?.variants],
+  );
+
+  // Extract variant dimensions: keys that differ across variants
+  const variantDimensions = useMemo(() => {
+    if (activeVariants.length === 0) return [];
+    const allKeys = new Set<string>();
+    activeVariants.forEach((v) => Object.keys(v.specs || {}).forEach((k) => allKeys.add(k)));
+
+    return Array.from(allKeys)
+      .map((key) => {
+        const values = [...new Set(activeVariants.map((v) => v.specs?.[key]).filter(Boolean))] as string[];
+        return { key, values };
+      })
+      .filter((d) => d.values.length > 0);
+  }, [activeVariants]);
+
+  // Default selections to first variant's specs
+  useEffect(() => {
+    if (activeVariants.length > 0 && Object.keys(selections).length === 0) {
+      const first = activeVariants[0];
+      setSelections(first.specs || {});
+    }
+  }, [activeVariants, selections]);
+
+  // Find matching variant from selections
+  const currentVariant = useMemo(() => {
+    if (activeVariants.length === 0 || variantDimensions.length === 0) return null;
+    return activeVariants.find((v) =>
+      variantDimensions.every((dim) => v.specs?.[dim.key] === selections[dim.key])
+    ) || null;
+  }, [activeVariants, variantDimensions, selections]);
+
+  // ── Rendering ──
+
   if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>;
   if (!product) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3"><Package className="w-12 h-12 text-gray-200" /><p className="text-gray-400">产品不存在</p></div>;
 
   const name = getName(product.content);
   const desc = getDesc(product.content);
   const catName = getName(product.category?.content);
-  const specs = product.specs || {};
-
-  // Build specs with attribute labels
-  const allSpecs = Object.entries(specs)
-    .filter(([, v]) => v)
-    .map(([key, val]) => {
-      const def = attrs.find((a) => a.key === key);
-      const label = def ? (def.name.zh || def.name.en || key) : key;
-      const unit = def?.unit || "";
-      return { key, label, value: unit ? `${val} ${unit}` : val, isHighlight: def?.isHighlight ?? false };
-    });
-
-  const highlightSpecs = allSpecs.filter((s) => s.isHighlight);
-  const activeVariants = (product.variants || []).filter((v) => v.isActive);
-  const currentVariant = activeVariants.find((v) => v.id === selectedVariant) || null;
+  const productSpecs = product.specs || {};
   const displaySku = currentVariant?.sku || product.modelNumber;
+
+  // Variant dimension keys (to filter from specs display)
+  const dimKeys = new Set(variantDimensions.map((d) => d.key));
+
+  // Build display specs: variant-specific specs override product-level, skip dimension keys
+  const displaySpecs = (() => {
+    const merged: Record<string, string | string[]> = { ...productSpecs };
+    // If variant selected, override with variant's specific values
+    if (currentVariant) {
+      for (const [k, v] of Object.entries(currentVariant.specs)) {
+        merged[k] = v;
+      }
+    }
+    return Object.entries(merged)
+      .filter(([k, v]) => v && (typeof v === "string" ? v.trim() !== "" : v.length > 0))
+      .filter(([k]) => !dimKeys.has(k)) // hide variant dimension keys (already shown in selector)
+      .map(([key, val]) => {
+        const def = attrs.find((a) => a.key === key);
+        const label = def ? (def.name.zh || def.name.en || key) : key;
+        const unit = def?.unit || "";
+        return { key, label, value: fmtSpecVal(val, unit), isHighlight: def?.isHighlight ?? false };
+      });
+  })();
+
+  const highlightSpecs = displaySpecs.filter((s) => s.isHighlight);
+
+  const getAttrLabel = (key: string) => {
+    const def = attrs.find((a) => a.key === key);
+    return def ? (def.name.zh || def.name.en || key) : key;
+  };
+
+  // Variant label for cart
+  const variantLabel = currentVariant
+    ? Object.entries(currentVariant.specs).map(([k, v]) => `${getAttrLabel(k)}: ${v}`).join(", ")
+    : "";
 
   return (
     <div className="bg-white min-h-screen">
@@ -143,37 +210,40 @@ export default function ProductDetailPage() {
 
             {desc && <p className="text-sm text-gray-500 leading-relaxed mb-6 whitespace-pre-line">{desc}</p>}
 
-            {/* Variants */}
-            {activeVariants.length > 0 && (
-              <div className="mb-6">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-2">
-                  规格选择
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {activeVariants.map((v) => {
-                    const active = v.id === selectedVariant;
-                    return (
-                      <button
-                        key={v.id}
-                        type="button"
-                        onClick={() => setSelectedVariant(active ? null : v.id)}
-                        className={cn(
-                          "px-3 py-2 rounded-lg border text-left transition-all",
-                          active
-                            ? "border-blue-600 bg-blue-50"
-                            : "border-gray-200 hover:border-gray-300 bg-white"
-                        )}
-                      >
-                        <div className="text-xs font-semibold text-gray-900">{v.label}</div>
-                        <div className="text-[10px] font-mono text-gray-400 mt-0.5">{v.sku}</div>
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Variant selector — grouped by dimension */}
+            {variantDimensions.length > 0 && (
+              <div className="mb-6 space-y-4">
+                {variantDimensions.map((dim) => (
+                  <div key={dim.key}>
+                    <p className="text-xs font-semibold text-gray-500 mb-2">
+                      {getAttrLabel(dim.key)}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {dim.values.map((val) => {
+                        const active = selections[dim.key] === val;
+                        return (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => setSelections((prev) => ({ ...prev, [dim.key]: val }))}
+                            className={cn(
+                              "px-4 py-2 rounded-lg border text-sm font-medium transition-all",
+                              active
+                                ? "border-blue-600 bg-blue-50 text-blue-700"
+                                : "border-gray-200 hover:border-gray-300 text-gray-600 bg-white"
+                            )}
+                          >
+                            {val}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Quick highlight specs (pills, like my-led-erp) */}
+            {/* Quick highlight specs */}
             {highlightSpecs.length > 0 && (
               <div className="grid grid-cols-2 gap-px bg-gray-200 rounded-xl overflow-hidden mb-6">
                 {highlightSpecs.map((spec, i) => (
@@ -207,7 +277,7 @@ export default function ProductDetailPage() {
                 onClick={() => {
                   addToCart({
                     productId: product.id,
-                    name: currentVariant ? `${name}（${currentVariant.label}）` : name,
+                    name: variantLabel ? `${name}（${variantLabel}）` : name,
                     modelNumber: displaySku,
                     imageUrl: product.images[0]?.url,
                   });
@@ -236,11 +306,10 @@ export default function ProductDetailPage() {
               )}
             </TabsList>
 
-            {/* Specs Table (like my-led-erp: 4-column layout) */}
             <TabsContent value="specs" className="mt-6">
-              {allSpecs.length > 0 ? (
+              {displaySpecs.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-gray-200 rounded-xl overflow-hidden">
-                  {allSpecs.map((spec) => (
+                  {displaySpecs.map((spec) => (
                     <div key={spec.key} className="bg-white px-5 py-3.5 flex justify-between items-center">
                       <span className="text-sm text-gray-500">{spec.label}</span>
                       <span className="text-sm font-semibold text-gray-900">{spec.value}</span>

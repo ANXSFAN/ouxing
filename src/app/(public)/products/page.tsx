@@ -23,7 +23,7 @@ interface Facet {
 }
 interface Product {
   id: string; slug: string; modelNumber: string;
-  content: ContentJson; specs: Record<string, string> | null;
+  content: ContentJson; specs: Record<string, string | string[]> | null;
   category: { id: string; content: ContentJson } | null;
   images: { url: string }[];
 }
@@ -322,8 +322,9 @@ function ProductCard({
   // Build highlight specs from attribute definitions
   const highlightSpecs = highlightAttrs
     .map((attr) => {
-      const val = specs[attr.key];
-      if (!val) return null;
+      const raw = specs[attr.key];
+      if (!raw) return null;
+      const val = Array.isArray(raw) ? raw.join(" / ") : raw;
       const label = attr.name.zh || attr.name.en || attr.key;
       const display = attr.unit ? `${val} ${attr.unit}` : val;
       return { key: attr.key, label, value: display };

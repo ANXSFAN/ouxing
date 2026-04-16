@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -15,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageUpload } from "@/components/upload/image-upload";
 import { FileUpload } from "@/components/upload/file-upload";
 import { DOC_TYPE_LABELS, CERT_TYPES } from "@/lib/constants";
-import { Loader2, Save, ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { Loader2, Save, ArrowLeft, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -28,12 +30,35 @@ interface AttributeDef {
 
 interface UploadedImage { url: string; fileName: string }
 interface UploadedFile { url: string; fileName: string; fileSize: number; mimeType: string; name?: string; docType?: string; certType?: string }
-interface VariantItem { sku: string; label: string; price: string; isActive: boolean }
+interface VariantRow { sku: string; price: string; specs: Record<string, string>; isActive: boolean }
 
 interface ProductFormProps {
   initialData?: Record<string, unknown>;
   isEditing?: boolean;
 }
+
+// ── Helpers ──
+
+/** Cartesian product of arrays: [[a,b],[1,2]] → [[a,1],[a,2],[b,1],[b,2]] */
+function cartesian<T>(arrays: T[][]): T[][] {
+  if (arrays.length === 0) return [[]];
+  return arrays.reduce<T[][]>(
+    (acc, arr) => acc.flatMap((combo) => arr.map((v) => [...combo, v])),
+    [[]],
+  );
+}
+
+/** Build SKU suffix from specs values: "3000K-18W" */
+function buildSkuSuffix(specValues: string[]): string {
+  return specValues.join("-");
+}
+
+/** Get attribute display label */
+function attrLabel(attr: AttributeDef): string {
+  return attr.name.zh || attr.name.en || attr.key;
+}
+
+// ── Component ──
 
 export function ProductForm({ initialData, isEditing }: ProductFormProps) {
   const router = useRouter();
@@ -42,7 +67,7 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [documents, setDocuments] = useState<UploadedFile[]>([]);
   const [certificates, setCertificates] = useState<UploadedFile[]>([]);
-  const [variants, setVariants] = useState<VariantItem[]>([]);
+  const [variants, setVariants] = useState<VariantRow[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Form state
@@ -57,8 +82,8 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
   const [nameEn, setNameEn] = useState("");
   const [descZh, setDescZh] = useState("");
   const [descEn, setDescEn] = useState("");
-  // Specs (from attribute definitions)
-  const [specs, setSpecs] = useState<Record<string, string>>({});
+  // Specs: value can be string (single) or string[] (multi-value → variant dimension)
+  const [specs, setSpecs] = useState<Record<string, string | string[]>>({});
 
   useEffect(() => {
     fetch("/api/categories").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setCategories(d); });
@@ -79,7 +104,8 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
       setNameEn(content?.en?.name || "");
       setDescZh(content?.zh?.description || "");
       setDescEn(content?.en?.description || "");
-      const existingSpecs = (initialData.specs as Record<string, string>) || {};
+
+      const existingSpecs = (initialData.specs as Record<string, string | string[]>) || {};
       setSpecs(existingSpecs);
 
       if (initialData.images) {
@@ -98,9 +124,10 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
         })));
       }
       if (initialData.variants) {
-        setVariants((initialData.variants as { sku: string; label: string; price: unknown; isActive: boolean }[]).map((v) => ({
-          sku: v.sku, label: v.label,
+        setVariants((initialData.variants as { sku: string; price: unknown; specs: Record<string, string>; isActive: boolean }[]).map((v) => ({
+          sku: v.sku,
           price: v.price != null ? String(v.price) : "",
+          specs: v.specs || {},
           isActive: v.isActive ?? true,
         })));
       }
@@ -112,10 +139,87 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
     return c?.zh?.name || c?.en?.name || "未命名";
   };
 
+  // ── Spec helpers ──
+
+  const updateSpec = useCallback((key: string, value: string | string[]) => {
+    setSpecs((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  /** Toggle a value in a multi-select spec */
+  const toggleSpecOption = useCallback((key: string, optValue: string, checked: boolean) => {
+    setSpecs((prev) => {
+      const current = prev[key];
+      const arr = Array.isArray(current) ? [...current] : current ? [current] : [];
+      if (checked && !arr.includes(optValue)) arr.push(optValue);
+      if (!checked) {
+        const idx = arr.indexOf(optValue);
+        if (idx >= 0) arr.splice(idx, 1);
+      }
+      return { ...prev, [key]: arr.length === 1 ? arr[0] : arr.length === 0 ? "" : arr };
+    });
+  }, []);
+
+  /** Which spec keys have multi-value (variant dimensions) */
+  const multiValueKeys = Object.entries(specs)
+    .filter(([, v]) => Array.isArray(v) && v.length > 1)
+    .map(([k]) => k);
+
+  // ── Variant generation ──
+
+  const generateVariants = useCallback(() => {
+    if (multiValueKeys.length === 0) {
+      toast.error("没有多值参数。请在技术参数中为SELECT属性勾选多个值。");
+      return;
+    }
+
+    const dimensions = multiValueKeys.map((key) => {
+      const vals = specs[key] as string[];
+      return { key, values: vals };
+    });
+
+    const combos = cartesian(dimensions.map((d) => d.values));
+    const base = modelNumber || "SKU";
+
+    // Build variant rows, preserving existing prices if specs match
+    const newVariants: VariantRow[] = combos.map((combo) => {
+      const variantSpecs: Record<string, string> = {};
+      dimensions.forEach((dim, i) => { variantSpecs[dim.key] = combo[i]; });
+      const suffix = buildSkuSuffix(combo);
+      const sku = `${base}-${suffix}`;
+
+      // Try to find existing variant with same specs
+      const existing = variants.find((v) => {
+        return dimensions.every((dim) => v.specs[dim.key] === variantSpecs[dim.key]);
+      });
+
+      return {
+        sku: existing?.sku || sku,
+        price: existing?.price || "",
+        specs: variantSpecs,
+        isActive: existing?.isActive ?? true,
+      };
+    });
+
+    setVariants(newVariants);
+    toast.success(`已生成 ${newVariants.length} 个变体`);
+  }, [multiValueKeys, specs, modelNumber, variants]);
+
+  // ── Submit ──
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!slug || !modelNumber || !nameZh) { toast.error("请填写Slug、型号和中文名称"); return; }
     setLoading(true);
+
+    // Build specs payload: filter empties, keep arrays for multi-value
+    const specsPayload: Record<string, string | string[]> = {};
+    for (const [k, v] of Object.entries(specs)) {
+      if (Array.isArray(v)) {
+        if (v.length > 0) specsPayload[k] = v;
+      } else if (v && v.trim() !== "") {
+        specsPayload[k] = v;
+      }
+    }
 
     const payload = {
       slug, modelNumber,
@@ -124,18 +228,15 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
         en: { name: nameEn, description: descEn },
       },
       price: price ? parseFloat(price) : null,
-      specs: (() => {
-        const filled = Object.fromEntries(Object.entries(specs).filter(([, v]) => v && v.trim() !== ""));
-        return Object.keys(filled).length > 0 ? filled : null;
-      })(),
+      specs: Object.keys(specsPayload).length > 0 ? specsPayload : null,
       categoryId: categoryId || null,
       isActive, isFeatured,
       variants: variants
-        .filter((v) => v.sku.trim() && v.label.trim())
+        .filter((v) => v.sku.trim())
         .map((v, i) => ({
           sku: v.sku.trim(),
-          label: v.label.trim(),
           price: v.price ? parseFloat(v.price) : null,
+          specs: v.specs,
           sortOrder: i,
           isActive: v.isActive,
         })),
@@ -153,9 +254,16 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
     setLoading(false);
   };
 
+  // ── Attribute grouping ──
   const SHIPPING_KEYS = ["qty_per_carton", "carton_length", "carton_width", "carton_height", "net_weight", "gross_weight"];
   const productAttrs = attributes.filter((a) => a.scope === "PRODUCT" && !SHIPPING_KEYS.includes(a.key));
   const shippingAttrs = attributes.filter((a) => SHIPPING_KEYS.includes(a.key));
+
+  /** Get display value for a spec key (for showing in variant table) */
+  const getAttrName = (key: string) => {
+    const attr = attributes.find((a) => a.key === key);
+    return attr ? attrLabel(attr) : key;
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -176,7 +284,12 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
           <TabsTrigger value="content">多语言内容</TabsTrigger>
           <TabsTrigger value="specs">技术参数</TabsTrigger>
           <TabsTrigger value="shipping">包装运输</TabsTrigger>
-          <TabsTrigger value="variants">变体</TabsTrigger>
+          <TabsTrigger value="variants">
+            变体
+            {variants.length > 0 && (
+              <span className="ml-1.5 text-xs bg-blue-100 text-blue-700 rounded-full px-1.5">{variants.length}</span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="media">图片</TabsTrigger>
           <TabsTrigger value="docs">文档与证书</TabsTrigger>
         </TabsList>
@@ -241,12 +354,14 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
           </Card>
         </TabsContent>
 
-        {/* 技术参数 - 显示所有参数，填了就存，不填就不存 */}
+        {/* 技术参数 */}
         <TabsContent value="specs">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">技术参数</CardTitle>
-              <p className="text-sm text-slate-400">填写的参数会保存，留空则不保存</p>
+              <p className="text-sm text-slate-400">
+                SELECT 类型属性可勾选多个值，多值属性将作为变体维度自动生成变体组合。
+              </p>
             </CardHeader>
             <CardContent>
               {productAttrs.length === 0 ? (
@@ -254,40 +369,57 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
                   暂无产品属性。请先在 <Link href="/admin/attributes" className="text-blue-600 underline">属性管理</Link> 中创建。
                 </p>
               ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {productAttrs.map((attr) => (
-                    <div key={attr.key} className="flex items-center gap-2">
-                      <Label className="w-24 shrink-0 text-right text-sm truncate" title={attr.name.zh || attr.key}>
-                        {attr.name.zh || attr.name.en || attr.key}
-                        {attr.unit && <span className="text-slate-400 ml-0.5">({attr.unit})</span>}
-                      </Label>
-                      <div className="flex-1 min-w-0">
+                <div className="space-y-4">
+                  {productAttrs.map((attr) => {
+                    const specVal = specs[attr.key];
+                    const currentArr = Array.isArray(specVal) ? specVal : specVal ? [specVal] : [];
+
+                    return (
+                      <div key={attr.key}>
+                        <Label className="text-sm font-medium mb-2 block">
+                          {attrLabel(attr)}
+                          {attr.unit && <span className="text-slate-400 ml-1">({attr.unit})</span>}
+                          {Array.isArray(specVal) && specVal.length > 1 && (
+                            <Badge variant="secondary" className="ml-2 text-[10px]">变体维度</Badge>
+                          )}
+                        </Label>
+
                         {attr.type === "SELECT" ? (
-                          <Select value={specs[attr.key] || ""} onValueChange={(v) => v && setSpecs({ ...specs, [attr.key]: v === "__clear__" ? "" : v })}>
-                            <SelectTrigger><SelectValue placeholder="选择..." /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__clear__">不选</SelectItem>
-                              {attr.options.map((opt) => (
-                                <SelectItem key={opt.value} value={opt.value}>
-                                  <div className="flex items-center gap-2">
-                                    {opt.color && <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: opt.color }} />}
-                                    {opt.value}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex flex-wrap gap-2">
+                            {attr.options.map((opt) => {
+                              const checked = currentArr.includes(opt.value);
+                              return (
+                                <label
+                                  key={opt.value}
+                                  className={`
+                                    flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all text-sm
+                                    ${checked
+                                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                                      : "border-slate-200 hover:border-slate-300 text-slate-600"
+                                    }
+                                  `}
+                                >
+                                  <Checkbox
+                                    checked={checked}
+                                    onCheckedChange={(c) => toggleSpecOption(attr.key, opt.value, !!c)}
+                                  />
+                                  {opt.color && <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: opt.color }} />}
+                                  {opt.value}
+                                </label>
+                              );
+                            })}
+                          </div>
                         ) : (
                           <Input
                             type={attr.type === "NUMBER" ? "number" : "text"}
-                            value={specs[attr.key] || ""}
-                            onChange={(e) => setSpecs({ ...specs, [attr.key]: e.target.value })}
-                            placeholder=""
+                            className="max-w-xs"
+                            value={(specVal as string) || ""}
+                            onChange={(e) => updateSpec(attr.key, e.target.value)}
                           />
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -305,11 +437,11 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
                 <div className="grid grid-cols-3 gap-4">
                   {shippingAttrs.map((attr) => (
                     <div key={attr.key} className="space-y-2">
-                      <Label>{attr.name.zh || attr.name.en || attr.key}{attr.unit && <span className="text-slate-400 ml-1">({attr.unit})</span>}</Label>
+                      <Label>{attrLabel(attr)}{attr.unit && <span className="text-slate-400 ml-1">({attr.unit})</span>}</Label>
                       <Input
                         type="number"
-                        value={specs[attr.key] || ""}
-                        onChange={(e) => setSpecs({ ...specs, [attr.key]: e.target.value })}
+                        value={(specs[attr.key] as string) || ""}
+                        onChange={(e) => updateSpec(attr.key, e.target.value)}
                         placeholder=""
                       />
                     </div>
@@ -324,40 +456,67 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
         <TabsContent value="variants">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">产品变体</CardTitle>
-              <p className="text-sm text-slate-400">
-                同一型号下的不同规格组合（如不同功率/色温）。每个变体有独立SKU和价格。
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">产品变体</CardTitle>
+                  <p className="text-sm text-slate-400 mt-1">
+                    在技术参数中勾选多个SELECT选项（如多种色温/功率），然后点击"生成变体"自动创建组合。
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={generateVariants}
+                  disabled={multiValueKeys.length === 0}
+                >
+                  <Sparkles className="w-4 h-4 mr-1" />
+                  生成变体
+                  {multiValueKeys.length > 0 && (
+                    <span className="ml-1 text-xs text-slate-400">
+                      ({multiValueKeys.map((k) => getAttrName(k)).join(" × ")})
+                    </span>
+                  )}
+                </Button>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent>
               {variants.length === 0 ? (
-                <p className="text-sm text-slate-400 py-4 text-center">暂无变体。点击下方按钮添加。</p>
+                <div className="text-center py-8 text-sm text-slate-400">
+                  <p>暂无变体。</p>
+                  <p className="mt-1">请先到"技术参数"中为 SELECT 类型属性勾选多个值，再点击"生成变体"。</p>
+                </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-[1fr_1fr_140px_80px_40px] gap-2 text-xs text-slate-500 px-1">
-                    <span>SKU <span className="text-red-500">*</span></span>
-                    <span>显示名 <span className="text-red-500">*</span></span>
-                    <span>价格（后台）</span>
+                  {/* Header */}
+                  <div className="grid grid-cols-[200px_1fr_140px_60px_40px] gap-2 text-xs text-slate-500 px-1 font-medium">
+                    <span>SKU</span>
+                    <span>规格</span>
+                    <span>价格</span>
                     <span>上架</span>
                     <span></span>
                   </div>
+                  {/* Rows */}
                   {variants.map((v, i) => (
-                    <div key={i} className="grid grid-cols-[1fr_1fr_140px_80px_40px] gap-2 items-center">
+                    <div key={i} className="grid grid-cols-[200px_1fr_140px_60px_40px] gap-2 items-center py-1 border-b border-slate-100 last:border-0">
                       <Input
                         value={v.sku}
                         onChange={(e) => { const next = [...variants]; next[i] = { ...v, sku: e.target.value }; setVariants(next); }}
-                        placeholder="如：PNL-18W-4K"
+                        className="font-mono text-xs"
                       />
-                      <Input
-                        value={v.label}
-                        onChange={(e) => { const next = [...variants]; next[i] = { ...v, label: e.target.value }; setVariants(next); }}
-                        placeholder="如：18W / 4000K"
-                      />
+                      <div className="flex flex-wrap gap-1">
+                        {Object.entries(v.specs).map(([key, val]) => (
+                          <Badge key={key} variant="secondary" className="text-[10px]">
+                            {getAttrName(key)}: {val}
+                          </Badge>
+                        ))}
+                      </div>
                       <Input
                         type="number"
                         step="0.01"
                         value={v.price}
                         onChange={(e) => { const next = [...variants]; next[i] = { ...v, price: e.target.value }; setVariants(next); }}
+                        placeholder="—"
                       />
                       <div className="flex justify-center">
                         <Switch
@@ -365,26 +524,13 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
                           onCheckedChange={(c) => { const next = [...variants]; next[i] = { ...v, isActive: c }; setVariants(next); }}
                         />
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setVariants(variants.filter((_, idx) => idx !== i))}
-                      >
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setVariants(variants.filter((_, idx) => idx !== i))}>
                         <Trash2 className="w-4 h-4 text-red-500" />
                       </Button>
                     </div>
                   ))}
                 </div>
               )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setVariants([...variants, { sku: "", label: "", price: "", isActive: true }])}
-              >
-                <Plus className="w-4 h-4 mr-1" /> 添加变体
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>

@@ -82,12 +82,11 @@ export async function PUT(
     if (body.variants?.length) {
       await prisma.productVariant.createMany({
         data: body.variants.map(
-          (v: { sku: string; label: string; price?: number | null; attributes?: Record<string, string> | null; sortOrder?: number; isActive?: boolean }, index: number) => ({
+          (v: { sku: string; price?: number | null; specs?: Record<string, string> | null; sortOrder?: number; isActive?: boolean }, index: number) => ({
             productId: id,
             sku: v.sku,
-            label: v.label,
             price: v.price ?? null,
-            attributes: v.attributes ?? undefined,
+            specs: v.specs || {},
             sortOrder: v.sortOrder ?? index,
             isActive: v.isActive ?? true,
           })
