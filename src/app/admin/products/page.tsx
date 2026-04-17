@@ -97,7 +97,8 @@ export default function ProductsPage() {
       toast.success("产品已删除");
       fetchProducts();
     } else {
-      toast.error("删除失败");
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error || "删除失败", { duration: 6000 });
     }
     setDeleteId(null);
     setLoading(false);

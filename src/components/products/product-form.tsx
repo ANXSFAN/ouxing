@@ -7,8 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -17,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageUpload } from "@/components/upload/image-upload";
 import { FileUpload } from "@/components/upload/file-upload";
 import { DOC_TYPE_LABELS, CERT_TYPES } from "@/lib/constants";
-import { Loader2, Save, ArrowLeft, Sparkles, Trash2 } from "lucide-react";
+import { Loader2, Save, ArrowLeft, Plus, X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -39,23 +37,15 @@ interface ProductFormProps {
 
 // ── Helpers ──
 
-/** Cartesian product of arrays: [[a,b],[1,2]] → [[a,1],[a,2],[b,1],[b,2]] */
-function cartesian<T>(arrays: T[][]): T[][] {
-  if (arrays.length === 0) return [[]];
-  return arrays.reduce<T[][]>(
-    (acc, arr) => acc.flatMap((combo) => arr.map((v) => [...combo, v])),
-    [[]],
-  );
-}
-
-/** Build SKU suffix from specs values: "3000K-18W" */
-function buildSkuSuffix(specValues: string[]): string {
-  return specValues.join("-");
-}
-
 /** Get attribute display label */
 function attrLabel(attr: AttributeDef): string {
   return attr.name.zh || attr.name.en || attr.key;
+}
+
+/** Coerce spec value (string | string[]) to single string */
+function coerceSpec(v: string | string[] | undefined): string {
+  if (Array.isArray(v)) return v[0] || "";
+  return v || "";
 }
 
 // ── Component ──
@@ -82,8 +72,9 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
   const [nameEn, setNameEn] = useState("");
   const [descZh, setDescZh] = useState("");
   const [descEn, setDescEn] = useState("");
-  // Specs: value can be string (single) or string[] (multi-value → variant dimension)
-  const [specs, setSpecs] = useState<Record<string, string | string[]>>({});
+  // Product-level specs (single value per attribute).
+  // Variant overrides live on each variant's own specs.
+  const [specs, setSpecs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch("/api/categories").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setCategories(d); });
@@ -106,7 +97,9 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
       setDescEn(content?.en?.description || "");
 
       const existingSpecs = (initialData.specs as Record<string, string | string[]>) || {};
-      setSpecs(existingSpecs);
+      const normalized: Record<string, string> = {};
+      for (const [k, v] of Object.entries(existingSpecs)) normalized[k] = coerceSpec(v);
+      setSpecs(normalized);
 
       if (initialData.images) {
         setImages((initialData.images as { url: string; alt?: string }[]).map((img) => ({ url: img.url, fileName: img.alt || "" })));
@@ -141,68 +134,46 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
 
   // ── Spec helpers ──
 
-  const updateSpec = useCallback((key: string, value: string | string[]) => {
+  const updateSpec = useCallback((key: string, value: string) => {
     setSpecs((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  /** Toggle a value in a multi-select spec */
-  const toggleSpecOption = useCallback((key: string, optValue: string, checked: boolean) => {
-    setSpecs((prev) => {
-      const current = prev[key];
-      const arr = Array.isArray(current) ? [...current] : current ? [current] : [];
-      if (checked && !arr.includes(optValue)) arr.push(optValue);
-      if (!checked) {
-        const idx = arr.indexOf(optValue);
-        if (idx >= 0) arr.splice(idx, 1);
-      }
-      return { ...prev, [key]: arr.length === 1 ? arr[0] : arr.length === 0 ? "" : arr };
+  // ── Variant helpers ──
+
+  const addVariant = useCallback(() => {
+    setVariants((prev) => {
+      const base = modelNumber || "SKU";
+      const suffix = prev.length + 1;
+      return [...prev, { sku: `${base}-${suffix}`, price: "", specs: {}, isActive: true }];
     });
+  }, [modelNumber]);
+
+  const updateVariant = useCallback((i: number, patch: Partial<VariantRow>) => {
+    setVariants((prev) => prev.map((v, idx) => (idx === i ? { ...v, ...patch } : v)));
   }, []);
 
-  /** Which spec keys have multi-value (variant dimensions) */
-  const multiValueKeys = Object.entries(specs)
-    .filter(([, v]) => Array.isArray(v) && v.length > 1)
-    .map(([k]) => k);
+  const setVariantSpec = useCallback((i: number, key: string, value: string) => {
+    setVariants((prev) => prev.map((v, idx) => {
+      if (idx !== i) return v;
+      const next = { ...v.specs };
+      if (value === "") delete next[key];
+      else next[key] = value;
+      return { ...v, specs: next };
+    }));
+  }, []);
 
-  // ── Variant generation ──
+  const removeVariantSpec = useCallback((i: number, key: string) => {
+    setVariants((prev) => prev.map((v, idx) => {
+      if (idx !== i) return v;
+      const next = { ...v.specs };
+      delete next[key];
+      return { ...v, specs: next };
+    }));
+  }, []);
 
-  const generateVariants = useCallback(() => {
-    if (multiValueKeys.length === 0) {
-      toast.error("没有多值参数。请在技术参数中为SELECT属性勾选多个值。");
-      return;
-    }
-
-    const dimensions = multiValueKeys.map((key) => {
-      const vals = specs[key] as string[];
-      return { key, values: vals };
-    });
-
-    const combos = cartesian(dimensions.map((d) => d.values));
-    const base = modelNumber || "SKU";
-
-    // Build variant rows, preserving existing prices if specs match
-    const newVariants: VariantRow[] = combos.map((combo) => {
-      const variantSpecs: Record<string, string> = {};
-      dimensions.forEach((dim, i) => { variantSpecs[dim.key] = combo[i]; });
-      const suffix = buildSkuSuffix(combo);
-      const sku = `${base}-${suffix}`;
-
-      // Try to find existing variant with same specs
-      const existing = variants.find((v) => {
-        return dimensions.every((dim) => v.specs[dim.key] === variantSpecs[dim.key]);
-      });
-
-      return {
-        sku: existing?.sku || sku,
-        price: existing?.price || "",
-        specs: variantSpecs,
-        isActive: existing?.isActive ?? true,
-      };
-    });
-
-    setVariants(newVariants);
-    toast.success(`已生成 ${newVariants.length} 个变体`);
-  }, [multiValueKeys, specs, modelNumber, variants]);
+  const removeVariant = useCallback((i: number) => {
+    setVariants((prev) => prev.filter((_, idx) => idx !== i));
+  }, []);
 
   // ── Submit ──
 
@@ -211,14 +182,10 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
     if (!slug || !modelNumber || !nameZh) { toast.error("请填写Slug、型号和中文名称"); return; }
     setLoading(true);
 
-    // Build specs payload: filter empties, keep arrays for multi-value
-    const specsPayload: Record<string, string | string[]> = {};
+    // Build specs payload: filter empties
+    const specsPayload: Record<string, string> = {};
     for (const [k, v] of Object.entries(specs)) {
-      if (Array.isArray(v)) {
-        if (v.length > 0) specsPayload[k] = v;
-      } else if (v && v.trim() !== "") {
-        specsPayload[k] = v;
-      }
+      if (v && v.trim() !== "") specsPayload[k] = v;
     }
 
     const payload = {
@@ -258,12 +225,6 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
   const SHIPPING_KEYS = ["qty_per_carton", "carton_length", "carton_width", "carton_height", "net_weight", "gross_weight"];
   const productAttrs = attributes.filter((a) => a.scope === "PRODUCT" && !SHIPPING_KEYS.includes(a.key));
   const shippingAttrs = attributes.filter((a) => SHIPPING_KEYS.includes(a.key));
-
-  /** Get display value for a spec key (for showing in variant table) */
-  const getAttrName = (key: string) => {
-    const attr = attributes.find((a) => a.key === key);
-    return attr ? attrLabel(attr) : key;
-  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -360,7 +321,7 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
             <CardHeader>
               <CardTitle className="text-base">技术参数</CardTitle>
               <p className="text-sm text-slate-400">
-                SELECT 类型属性可勾选多个值，多值属性将作为变体维度自动生成变体组合。
+                填写产品的默认参数。如有多种规格（如不同功率、色温），请到&ldquo;变体&rdquo;中添加变体并在变体里覆盖对应参数。
               </p>
             </CardHeader>
             <CardContent>
@@ -371,41 +332,35 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
               ) : (
                 <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                   {productAttrs.map((attr) => {
-                    const specVal = specs[attr.key];
-                    const currentArr = Array.isArray(specVal) ? specVal : specVal ? [specVal] : [];
+                    const specVal = specs[attr.key] || "";
 
                     return (
                       <div key={attr.key}>
                         <Label className="text-sm font-medium mb-2 block">
                           {attrLabel(attr)}
                           {attr.unit && <span className="text-slate-400 ml-1">({attr.unit})</span>}
-                          {Array.isArray(specVal) && specVal.length > 1 && (
-                            <Badge variant="secondary" className="ml-2 text-[10px]">变体维度</Badge>
-                          )}
                         </Label>
 
                         {attr.type === "SELECT" ? (
                           <div className="flex flex-wrap gap-2">
                             {attr.options.map((opt) => {
-                              const checked = currentArr.includes(opt.value);
+                              const checked = specVal === opt.value;
                               return (
-                                <label
+                                <button
+                                  type="button"
                                   key={opt.value}
+                                  onClick={() => updateSpec(attr.key, checked ? "" : opt.value)}
                                   className={`
-                                    flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all text-sm
+                                    flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-sm
                                     ${checked
                                       ? "border-blue-500 bg-blue-50 text-blue-700"
                                       : "border-slate-200 hover:border-slate-300 text-slate-600"
                                     }
                                   `}
                                 >
-                                  <Checkbox
-                                    checked={checked}
-                                    onCheckedChange={(c) => toggleSpecOption(attr.key, opt.value, !!c)}
-                                  />
                                   {opt.color && <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: opt.color }} />}
                                   {opt.value}
-                                </label>
+                                </button>
                               );
                             })}
                           </div>
@@ -413,7 +368,7 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
                           <Input
                             type={attr.type === "NUMBER" ? "number" : "text"}
                             className="max-w-xs"
-                            value={(specVal as string) || ""}
+                            value={specVal}
                             onChange={(e) => updateSpec(attr.key, e.target.value)}
                           />
                         )}
@@ -440,7 +395,7 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
                       <Label>{attrLabel(attr)}{attr.unit && <span className="text-slate-400 ml-1">({attr.unit})</span>}</Label>
                       <Input
                         type="number"
-                        value={(specs[attr.key] as string) || ""}
+                        value={specs[attr.key] || ""}
                         onChange={(e) => updateSpec(attr.key, e.target.value)}
                         placeholder=""
                       />
@@ -460,74 +415,33 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
                 <div>
                   <CardTitle className="text-base">产品变体</CardTitle>
                   <p className="text-sm text-slate-400 mt-1">
-                    在技术参数中勾选多个SELECT选项（如多种色温/功率），然后点击"生成变体"自动创建组合。
+                    手动添加变体。每个变体里设置的参数会覆盖&ldquo;技术参数&rdquo;中的同名参数；未设置的参数沿用产品默认值。
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={generateVariants}
-                  disabled={multiValueKeys.length === 0}
-                >
-                  <Sparkles className="w-4 h-4 mr-1" />
-                  生成变体
-                  {multiValueKeys.length > 0 && (
-                    <span className="ml-1 text-xs text-slate-400">
-                      ({multiValueKeys.map((k) => getAttrName(k)).join(" × ")})
-                    </span>
-                  )}
+                <Button type="button" variant="outline" size="sm" onClick={addVariant}>
+                  <Plus className="w-4 h-4 mr-1" /> 添加变体
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
               {variants.length === 0 ? (
-                <div className="text-center py-8 text-sm text-slate-400">
+                <div className="text-center py-10 text-sm text-slate-400">
                   <p>暂无变体。</p>
-                  <p className="mt-1">请先到"技术参数"中为 SELECT 类型属性勾选多个值，再点击"生成变体"。</p>
+                  <p className="mt-1">如果产品有多种规格（例如不同功率/色温），点击右上角&ldquo;添加变体&rdquo;。</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {/* Header */}
-                  <div className="grid grid-cols-[200px_1fr_140px_60px_40px] gap-2 text-xs text-slate-500 px-1 font-medium">
-                    <span>SKU</span>
-                    <span>规格</span>
-                    <span>价格</span>
-                    <span>上架</span>
-                    <span></span>
-                  </div>
-                  {/* Rows */}
+                <div className="space-y-3">
                   {variants.map((v, i) => (
-                    <div key={i} className="grid grid-cols-[200px_1fr_140px_60px_40px] gap-2 items-center py-1 border-b border-slate-100 last:border-0">
-                      <Input
-                        value={v.sku}
-                        onChange={(e) => { const next = [...variants]; next[i] = { ...v, sku: e.target.value }; setVariants(next); }}
-                        className="font-mono text-xs"
-                      />
-                      <div className="flex flex-wrap gap-1">
-                        {Object.entries(v.specs).map(([key, val]) => (
-                          <Badge key={key} variant="secondary" className="text-[10px]">
-                            {getAttrName(key)}: {val}
-                          </Badge>
-                        ))}
-                      </div>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={v.price}
-                        onChange={(e) => { const next = [...variants]; next[i] = { ...v, price: e.target.value }; setVariants(next); }}
-                        placeholder="—"
-                      />
-                      <div className="flex justify-center">
-                        <Switch
-                          checked={v.isActive}
-                          onCheckedChange={(c) => { const next = [...variants]; next[i] = { ...v, isActive: c }; setVariants(next); }}
-                        />
-                      </div>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => setVariants(variants.filter((_, idx) => idx !== i))}>
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
-                    </div>
+                    <VariantCard
+                      key={i}
+                      index={i}
+                      variant={v}
+                      attributes={productAttrs}
+                      onChange={(patch) => updateVariant(i, patch)}
+                      onSpecChange={(key, val) => setVariantSpec(i, key, val)}
+                      onSpecRemove={(key) => removeVariantSpec(i, key)}
+                      onRemove={() => removeVariant(i)}
+                    />
                   ))}
                 </div>
               )}
@@ -579,5 +493,148 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
         </TabsContent>
       </Tabs>
     </form>
+  );
+}
+
+// ── VariantCard ──
+
+interface VariantCardProps {
+  index: number;
+  variant: VariantRow;
+  attributes: AttributeDef[];
+  onChange: (patch: Partial<VariantRow>) => void;
+  onSpecChange: (key: string, value: string) => void;
+  onSpecRemove: (key: string) => void;
+  onRemove: () => void;
+}
+
+function VariantCard({ index, variant, attributes, onChange, onSpecChange, onSpecRemove, onRemove }: VariantCardProps) {
+  const usedKeys = new Set(Object.keys(variant.specs));
+  const availableAttrs = attributes.filter((a) => !usedKeys.has(a.key));
+
+  return (
+    <div className="border border-slate-200 rounded-lg p-4 space-y-3 bg-slate-50/40">
+      {/* Top row: SKU / Price / Active / Delete */}
+      <div className="flex items-end gap-3">
+        <div className="w-10 text-xs text-slate-400 pb-2.5">#{index + 1}</div>
+        <div className="flex-1 space-y-1">
+          <Label className="text-xs text-slate-500">SKU</Label>
+          <Input
+            value={variant.sku}
+            onChange={(e) => onChange({ sku: e.target.value })}
+            className="font-mono text-sm"
+            placeholder="SKU"
+          />
+        </div>
+        <div className="w-36 space-y-1">
+          <Label className="text-xs text-slate-500">价格</Label>
+          <Input
+            type="number"
+            step="0.01"
+            value={variant.price}
+            onChange={(e) => onChange({ price: e.target.value })}
+            placeholder="—"
+          />
+        </div>
+        <div className="flex items-center gap-2 pb-2.5">
+          <Switch checked={variant.isActive} onCheckedChange={(c) => onChange({ isActive: c })} />
+          <span className="text-xs text-slate-500">上架</span>
+        </div>
+        <Button type="button" variant="ghost" size="icon" onClick={onRemove} className="shrink-0">
+          <Trash2 className="w-4 h-4 text-red-500" />
+        </Button>
+      </div>
+
+      {/* Spec overrides */}
+      <div className="pl-10">
+        <Label className="text-xs text-slate-500 block mb-2">规格覆盖</Label>
+        <div className="flex flex-wrap gap-2 items-center">
+          {Object.entries(variant.specs).map(([key, val]) => {
+            const attr = attributes.find((a) => a.key === key);
+            return (
+              <VariantSpecChip
+                key={key}
+                attrKey={key}
+                attr={attr}
+                value={val}
+                onChange={(v) => onSpecChange(key, v)}
+                onRemove={() => onSpecRemove(key)}
+              />
+            );
+          })}
+
+          {availableAttrs.length > 0 && (
+            <Select value="" onValueChange={(k) => { if (k) onSpecChange(k, ""); }}>
+              <SelectTrigger className="h-7 w-auto px-2.5 border-dashed text-xs text-slate-500 hover:border-blue-400 hover:text-blue-600 [&>svg]:hidden">
+                <span className="inline-flex items-center gap-1">
+                  <Plus className="w-3 h-3" /> 添加参数
+                </span>
+              </SelectTrigger>
+              <SelectContent>
+                {availableAttrs.map((a) => (
+                  <SelectItem key={a.key} value={a.key}>
+                    {attrLabel(a)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+        {Object.keys(variant.specs).length === 0 && (
+          <p className="text-xs text-slate-400 mt-1">未设置任何覆盖，此变体将显示为产品默认参数。</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface VariantSpecChipProps {
+  attrKey: string;
+  attr: AttributeDef | undefined;
+  value: string;
+  onChange: (v: string) => void;
+  onRemove: () => void;
+}
+
+function VariantSpecChip({ attrKey, attr, value, onChange, onRemove }: VariantSpecChipProps) {
+  const label = attr ? attrLabel(attr) : attrKey;
+  const unit = attr?.unit;
+
+  return (
+    <div className="inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-md border border-slate-200 bg-white text-xs">
+      <span className="text-slate-500 font-medium">{label}{unit && <span className="text-slate-400">({unit})</span>}:</span>
+      {attr?.type === "SELECT" && attr.options.length > 0 ? (
+        <Select value={value} onValueChange={(v) => onChange(v || "")}>
+          <SelectTrigger className="h-6 min-w-[80px] text-xs border-0 shadow-none bg-transparent px-1 focus:ring-0">
+            <SelectValue placeholder="选择" />
+          </SelectTrigger>
+          <SelectContent>
+            {attr.options.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                <span className="inline-flex items-center gap-2">
+                  {opt.color && <span className="w-3 h-3 rounded-full border" style={{ backgroundColor: opt.color }} />}
+                  {opt.value}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <Input
+          type={attr?.type === "NUMBER" ? "number" : "text"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-6 min-w-[80px] w-24 text-xs border-0 shadow-none bg-transparent px-1 focus-visible:ring-0"
+          placeholder="填写"
+        />
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-100 text-slate-400 hover:text-red-500"
+      >
+        <X className="w-3 h-3" />
+      </button>
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 
 export async function GET(
   _request: NextRequest,
@@ -121,6 +122,23 @@ export async function DELETE(
   if (!session) return NextResponse.json({ error: "未授权" }, { status: 401 });
 
   const { id } = await params;
-  await prisma.product.delete({ where: { id } });
-  return NextResponse.json({ success: true });
+  try {
+    await prisma.product.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (e: unknown) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
+      const [quoteCount, inquiryCount] = await Promise.all([
+        prisma.quoteItem.count({ where: { productId: id } }),
+        prisma.inquiryProduct.count({ where: { productId: id } }),
+      ]);
+      const refs: string[] = [];
+      if (quoteCount > 0) refs.push(`${quoteCount} 份报价单`);
+      if (inquiryCount > 0) refs.push(`${inquiryCount} 条询价记录`);
+      const msg = refs.length
+        ? `该产品已被 ${refs.join("、")} 引用，无法删除。请先处理相关记录，或改为将产品下架。`
+        : "该产品存在关联数据，无法删除。";
+      return NextResponse.json({ error: msg }, { status: 409 });
+    }
+    throw e;
+  }
 }
