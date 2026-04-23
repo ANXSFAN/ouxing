@@ -95,14 +95,19 @@ export default function ProductDetailPage() {
     ) || null;
   }, [activeVariants, variantDimensions, selections]);
 
-  // A chip is clickable only if setting it (with other current selections) would
-  // still match some real variant strictly (all dimension keys compared, undefined
-  // matches undefined). Combinations no variant declares get disabled.
-  const isChipEnabled = (dimKey: string, val: string): boolean => {
-    const candidate = { ...selections, [dimKey]: val };
-    return activeVariants.some((v) =>
-      variantDimensions.every((dim) => v.specs?.[dim.key] === candidate[dim.key])
-    );
+  // Click a chip -> snap to the variant that best matches (dim=val + current selections).
+  // Guarantees selections always map to a real variant; avoids phantom combinations.
+  const pickVariant = (dimKey: string, val: string): VariantRow | null => {
+    const candidates = activeVariants.filter((v) => v.specs?.[dimKey] === val);
+    if (candidates.length === 0) return null;
+    if (candidates.length === 1) return candidates[0];
+    // Score by overlap with current selections
+    const scored = candidates.map((v) => ({
+      v,
+      score: Object.entries(v.specs || {}).filter(([k, vv]) => selections[k] === vv).length,
+    }));
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0].v;
   };
 
   // ── Rendering ──
@@ -231,20 +236,19 @@ export default function ProductDetailPage() {
                     <div className="flex flex-wrap gap-2">
                       {dim.values.map((val) => {
                         const active = selections[dim.key] === val;
-                        const enabled = active || isChipEnabled(dim.key, val);
                         return (
                           <button
                             key={val}
                             type="button"
-                            disabled={!enabled}
-                            onClick={() => setSelections((prev) => ({ ...prev, [dim.key]: val }))}
+                            onClick={() => {
+                              const target = pickVariant(dim.key, val);
+                              if (target) setSelections({ ...(target.specs || {}) });
+                            }}
                             className={cn(
                               "px-4 py-2 rounded-lg border text-sm font-medium transition-all",
                               active
                                 ? "border-blue-600 bg-blue-50 text-blue-700"
-                                : enabled
-                                  ? "border-gray-200 hover:border-gray-300 text-gray-600 bg-white"
-                                  : "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed line-through"
+                                : "border-gray-200 hover:border-gray-300 text-gray-600 bg-white"
                             )}
                           >
                             {val}
