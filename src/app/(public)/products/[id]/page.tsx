@@ -95,6 +95,21 @@ export default function ProductDetailPage() {
     ) || null;
   }, [activeVariants, variantDimensions, selections]);
 
+  // Click a chip -> snap to the variant that best matches (dim=val + current selections).
+  // Guarantees selections always map to a real variant; avoids phantom combinations.
+  const pickVariant = (dimKey: string, val: string): VariantRow | null => {
+    const candidates = activeVariants.filter((v) => v.specs?.[dimKey] === val);
+    if (candidates.length === 0) return null;
+    if (candidates.length === 1) return candidates[0];
+    // Score by overlap with current selections
+    const scored = candidates.map((v) => ({
+      v,
+      score: Object.entries(v.specs || {}).filter(([k, vv]) => selections[k] === vv).length,
+    }));
+    scored.sort((a, b) => b.score - a.score);
+    return scored[0].v;
+  };
+
   // ── Rendering ──
 
   if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>;
@@ -225,7 +240,10 @@ export default function ProductDetailPage() {
                           <button
                             key={val}
                             type="button"
-                            onClick={() => setSelections((prev) => ({ ...prev, [dim.key]: val }))}
+                            onClick={() => {
+                              const target = pickVariant(dim.key, val);
+                              if (target) setSelections({ ...(target.specs || {}) });
+                            }}
                             className={cn(
                               "px-4 py-2 rounded-lg border text-sm font-medium transition-all",
                               active
