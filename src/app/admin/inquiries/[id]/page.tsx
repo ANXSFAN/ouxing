@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,14 @@ import {
 import { format } from "date-fns";
 import { toast } from "sonner";
 
+function toDatetimeLocal(value: string | null | undefined): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 interface InquiryDetail {
   id: string;
   name: string | null;
@@ -40,6 +49,9 @@ interface InquiryDetail {
   message: string | null;
   status: string;
   adminNotes: string | null;
+  orderedAt: string | null;
+  readyAt: string | null;
+  shippedAt: string | null;
   createdAt: string;
   products: {
     quantity: number | null;
@@ -62,6 +74,9 @@ export default function InquiryDetailPage() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
+  const [orderedAt, setOrderedAt] = useState("");
+  const [readyAt, setReadyAt] = useState("");
+  const [shippedAt, setShippedAt] = useState("");
 
   useEffect(() => {
     fetch(`/api/inquiries/${params.id}`)
@@ -70,6 +85,9 @@ export default function InquiryDetailPage() {
         setInquiry(data);
         setStatus(data.status);
         setAdminNotes(data.adminNotes || "");
+        setOrderedAt(toDatetimeLocal(data.orderedAt));
+        setReadyAt(toDatetimeLocal(data.readyAt));
+        setShippedAt(toDatetimeLocal(data.shippedAt));
         setLoading(false);
       });
   }, [params.id]);
@@ -79,7 +97,13 @@ export default function InquiryDetailPage() {
     const res = await fetch(`/api/inquiries/${params.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, adminNotes }),
+      body: JSON.stringify({
+        status,
+        adminNotes,
+        orderedAt: orderedAt || null,
+        readyAt: readyAt || null,
+        shippedAt: shippedAt || null,
+      }),
     });
 
     if (res.ok) {
@@ -266,6 +290,42 @@ export default function InquiryDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 出货日期 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">出货日期</CardTitle>
+          <p className="text-xs text-slate-400 mt-1">记录订单关键时间节点，方便跟进进度。</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm">下单时间</Label>
+              <Input
+                type="datetime-local"
+                value={orderedAt}
+                onChange={(e) => setOrderedAt(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">货好时间</Label>
+              <Input
+                type="datetime-local"
+                value={readyAt}
+                onChange={(e) => setReadyAt(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">出货时间</Label>
+              <Input
+                type="datetime-local"
+                value={shippedAt}
+                onChange={(e) => setShippedAt(e.target.value)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

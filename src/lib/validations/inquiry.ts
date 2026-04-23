@@ -15,9 +15,21 @@ export const inquirySchema = z.object({
     .optional(),
 });
 
+const nullableDate = z
+  .union([z.string(), z.null()])
+  .optional()
+  .transform((v) => {
+    if (v == null || v === "") return null;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  });
+
 export const inquiryUpdateSchema = z.object({
   status: z.enum(["PENDING", "PROCESSING", "QUOTED", "CLOSED"]).optional(),
   adminNotes: z.string().optional(),
+  orderedAt: nullableDate,
+  readyAt: nullableDate,
+  shippedAt: nullableDate,
 });
 
 export type InquiryInput = z.infer<typeof inquirySchema>;

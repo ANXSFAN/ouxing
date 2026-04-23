@@ -134,6 +134,9 @@ model Inquiry {
   message    String?
   status     InquiryStatus    @default(PENDING)
   adminNotes String?          @map("admin_notes")
+  orderedAt  DateTime?        @map("ordered_at")
+  readyAt    DateTime?        @map("ready_at")
+  shippedAt  DateTime?        @map("shipped_at")
   createdAt  DateTime         @default(now()) @map("created_at")
   updatedAt  DateTime         @updatedAt @map("updated_at")
   products   InquiryProduct[]

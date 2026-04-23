@@ -10,6 +10,9 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageUpload } from "@/components/upload/image-upload";
@@ -564,20 +567,23 @@ function VariantCard({ index, variant, attributes, onChange, onSpecChange, onSpe
           })}
 
           {availableAttrs.length > 0 && (
-            <Select value="" onValueChange={(k) => { if (k) onSpecChange(k, ""); }}>
-              <SelectTrigger className="h-7 w-auto px-2.5 border-dashed text-xs text-slate-500 hover:border-blue-400 hover:text-blue-600 [&>svg]:hidden">
-                <span className="inline-flex items-center gap-1">
-                  <Plus className="w-3 h-3" /> 添加参数
-                </span>
-              </SelectTrigger>
-              <SelectContent>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md border border-dashed border-slate-300 text-xs text-slate-500 hover:border-blue-400 hover:text-blue-600 bg-transparent"
+              >
+                <Plus className="w-3 h-3" /> 添加参数
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
                 {availableAttrs.map((a) => (
-                  <SelectItem key={a.key} value={a.key}>
+                  <DropdownMenuItem
+                    key={a.key}
+                    onClick={() => onSpecChange(a.key, "")}
+                  >
                     {attrLabel(a)}
-                  </SelectItem>
+                  </DropdownMenuItem>
                 ))}
-              </SelectContent>
-            </Select>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
         {Object.keys(variant.specs).length === 0 && (
