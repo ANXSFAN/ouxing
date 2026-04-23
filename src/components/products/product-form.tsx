@@ -158,10 +158,7 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
   const setVariantSpec = useCallback((i: number, key: string, value: string) => {
     setVariants((prev) => prev.map((v, idx) => {
       if (idx !== i) return v;
-      const next = { ...v.specs };
-      if (value === "") delete next[key];
-      else next[key] = value;
-      return { ...v, specs: next };
+      return { ...v, specs: { ...v.specs, [key]: value } };
     }));
   }, []);
 
@@ -203,13 +200,19 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
       isActive, isFeatured,
       variants: variants
         .filter((v) => v.sku.trim())
-        .map((v, i) => ({
-          sku: v.sku.trim(),
-          price: v.price ? parseFloat(v.price) : null,
-          specs: v.specs,
-          sortOrder: i,
-          isActive: v.isActive,
-        })),
+        .map((v, i) => {
+          const cleanSpecs: Record<string, string> = {};
+          for (const [k, val] of Object.entries(v.specs)) {
+            if (val && val.trim() !== "") cleanSpecs[k] = val;
+          }
+          return {
+            sku: v.sku.trim(),
+            price: v.price ? parseFloat(v.price) : null,
+            specs: cleanSpecs,
+            sortOrder: i,
+            isActive: v.isActive,
+          };
+        }),
       images: images.map((img) => ({ url: img.url, fileName: img.fileName })),
       documents: documents.map((d) => ({ url: d.url, fileName: d.fileName, fileSize: d.fileSize, mimeType: d.mimeType, name: d.name || d.fileName, docType: d.docType || "DATASHEET" })),
       certificates: certificates.map((c) => ({ url: c.url, fileName: c.fileName, fileSize: c.fileSize, mimeType: c.mimeType, name: c.name || c.fileName, certType: c.certType || "其他" })),
