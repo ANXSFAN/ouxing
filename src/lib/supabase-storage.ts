@@ -1,14 +1,25 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { readFile } from "fs/promises";
 import path from "path";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY!;
-const BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "product-assets";
+let cachedClient: SupabaseClient | null = null;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SECRET_KEY, {
-  auth: { persistSession: false },
-});
+function getClient(): SupabaseClient {
+  if (cachedClient) return cachedClient;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!url || !key) {
+    throw new Error(
+      "Supabase Storage 未配置: 缺少 NEXT_PUBLIC_SUPABASE_URL 或 SUPABASE_SECRET_KEY"
+    );
+  }
+  cachedClient = createClient(url, key, { auth: { persistSession: false } });
+  return cachedClient;
+}
+
+function getBucket(): string {
+  return process.env.SUPABASE_STORAGE_BUCKET || "product-assets";
+}
 
 export type StorageFolder = "images" | "documents" | "certificates";
 
@@ -19,9 +30,11 @@ export async function uploadToStorage(
   contentType: string
 ): Promise<{ url: string; path: string }> {
   const objectPath = `${folder}/${fileName}`;
+  const bucket = getBucket();
+  const client = getClient();
 
-  const { error } = await supabase.storage
-    .from(BUCKET)
+  const { error } = await client.storage
+    .from(bucket)
     .upload(objectPath, buffer, {
       contentType,
       upsert: false,
@@ -29,7 +42,7 @@ export async function uploadToStorage(
 
   if (error) throw new Error(`Supabase upload failed: ${error.message}`);
 
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(objectPath);
+  const { data } = client.storage.from(bucket).getPublicUrl(objectPath);
   return { url: data.publicUrl, path: objectPath };
 }
 
@@ -59,7 +72,9 @@ export async function fetchStoredFile(urlOrPath: string): Promise<Buffer> {
  * Returns null if the URL does not belong to our Supabase bucket.
  */
 export function objectPathFromUrl(url: string): string | null {
-  const prefix = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/`;
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return null;
+  const prefix = `${base}/storage/v1/object/public/${getBucket()}/`;
   if (!url.startsWith(prefix)) return null;
   return url.slice(prefix.length);
 }
