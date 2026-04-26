@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { ALLOWED_IMAGE_TYPES, ALLOWED_DOC_TYPES, MAX_IMAGE_SIZE, MAX_DOC_SIZE } from "@/lib/constants";
+import { uploadToStorage, type StorageFolder } from "@/lib/supabase-storage";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -34,32 +34,29 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Generate unique filename
+  // Generate unique filename (kept ASCII to avoid URL-encoding surprises)
   const ext = path.extname(file.name);
   const sanitizedName = file.name
     .replace(ext, "")
-    .replace(/[^a-zA-Z0-9\u4e00-\u9fa5_-]/g, "_")
-    .slice(0, 50);
-  const uniqueName = `${randomUUID().slice(0, 8)}-${sanitizedName}${ext}`;
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .slice(0, 50) || "file";
+  const uniqueName = `${randomUUID().slice(0, 8)}-${sanitizedName}${ext.toLowerCase()}`;
 
-  // Determine upload directory
-  const typeDir = type === "image" ? "images" : type === "certificate" ? "certificates" : "documents";
-  const uploadDir = path.join(process.cwd(), "uploads", typeDir);
+  const folder: StorageFolder =
+    type === "image" ? "images" : type === "certificate" ? "certificates" : "documents";
 
-  // Ensure directory exists
-  await mkdir(uploadDir, { recursive: true });
-
-  // Write file
   const buffer = Buffer.from(await file.arrayBuffer());
-  const filePath = path.join(uploadDir, uniqueName);
-  await writeFile(filePath, buffer);
 
-  const url = `/api/files/${typeDir}/${uniqueName}`;
-
-  return NextResponse.json({
-    url,
-    fileName: file.name,
-    fileSize: file.size,
-    mimeType: file.type,
-  });
+  try {
+    const { url } = await uploadToStorage(buffer, folder, uniqueName, file.type);
+    return NextResponse.json({
+      url,
+      fileName: file.name,
+      fileSize: file.size,
+      mimeType: file.type,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "上传失败";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

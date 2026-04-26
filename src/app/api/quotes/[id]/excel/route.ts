@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ExcelJS from "exceljs";
-import path from "path";
-import { readFile } from "fs/promises";
+import { fetchStoredFile } from "@/lib/supabase-storage";
 
 export async function GET(
   _request: NextRequest,
@@ -56,16 +55,17 @@ export async function GET(
     { key: "D", width: 27 },    // Specification
     { key: "E", width: 15 },    // Voltage
     { key: "F", width: 12.5 },  // Lumen
-    { key: "G", width: 12 },    // CCT / Color
-    { key: "H", width: 12 },    // Chip
-    { key: "I", width: 11.5 },  // CRI
-    { key: "J", width: 13.5 },  // Power Factor
-    { key: "K", width: 13.5 },  // Beam Angle
-    { key: "L", width: 12.5 },  // Material
-    { key: "M", width: 13 },    // Product Size
-    { key: "N", width: 12.5 },  // IP
-    { key: "O", width: 13 },    // Price
-    { key: "P", width: 21.5 },  // Remark
+    { key: "G", width: 12 },    // Warranty
+    { key: "H", width: 12 },    // CCT / Color
+    { key: "I", width: 12 },    // Chip
+    { key: "J", width: 11.5 },  // CRI
+    { key: "K", width: 13.5 },  // Power Factor
+    { key: "L", width: 13.5 },  // Beam Angle
+    { key: "M", width: 12.5 },  // Material
+    { key: "N", width: 13 },    // Product Size
+    { key: "O", width: 12.5 },  // IP
+    { key: "P", width: 13 },    // Price
+    { key: "Q", width: 21.5 },  // Remark
   ];
 
   const borderThin: Partial<ExcelJS.Borders> = {
@@ -88,7 +88,7 @@ export async function GET(
   };
 
   // ── Row 1: Title ──
-  ws.mergeCells("A1:P1");
+  ws.mergeCells("A1:Q1");
   const titleCell = ws.getCell("A1");
   titleCell.value = "欧达星产品报价表";
   titleCell.font = { size: 28, name: "宋体" };
@@ -104,23 +104,24 @@ export async function GET(
     ["", ""],                       // D — header only in row 3
     ["电压", "Voltage"],           // E
     ["流明", "Lumen"],             // F
-    ["色温", "Color"],             // G
-    ["芯片", "Chip"],              // H
-    ["CRI", "CRI"],                // I
-    ["功率因数", "Power Factor"],  // J
-    ["光束角", "Beam Angle"],      // K
-    ["材质", "Material"],          // L
-    ["产品尺寸\n(mm)", "Product Size\n(mm)"], // M
-    ["IP", "IP"],                  // N
-    ["含税价RMB", "Unit Price(RMB)"], // O
-    ["备注", "Remark"],            // P
+    ["质保", "Warranty"],          // G
+    ["色温", "Color"],             // H
+    ["芯片", "Chip"],              // I
+    ["CRI", "CRI"],                // J
+    ["功率因数", "Power Factor"],  // K
+    ["光束角", "Beam Angle"],      // L
+    ["材质", "Material"],          // M
+    ["产品尺寸\n(mm)", "Product Size\n(mm)"], // N
+    ["IP", "IP"],                  // O
+    ["含税价RMB", "Unit Price(RMB)"], // P
+    ["备注", "Remark"],            // Q
   ];
 
   // D column row 3 header
   const dHeader: [string, string] = ["规格", "Specification"];
 
   // Merge header cells across rows 2-3 (all except D)
-  const mergeCols = ["A","B","C","E","F","G","H","I","J","K","L","M","N","O","P"];
+  const mergeCols = ["A","B","C","E","F","G","H","I","J","K","L","M","N","O","P","Q"];
   mergeCols.forEach((col) => {
     ws.mergeCells(`${col}2:${col}3`);
   });
@@ -156,7 +157,7 @@ export async function GET(
   });
 
   // Style row 3 borders for merged cells
-  for (let c = 1; c <= 16; c++) {
+  for (let c = 1; c <= 17; c++) {
     const cell = ws.getCell(3, c);
     cell.border = borderThin;
     if (!cell.fill || (cell.fill as ExcelJS.FillPattern).pattern !== "solid") {
@@ -171,11 +172,10 @@ export async function GET(
     row: number
   ): Promise<void> {
     try {
-      const imagePath = imageUrl.replace("/api/files/", "");
-      const fullPath = path.join(process.cwd(), "uploads", imagePath);
-      const imageBuffer = await readFile(fullPath);
-      const ext = path.extname(fullPath).toLowerCase().replace(".", "");
-      const extension = ext === "jpg" ? "jpeg" : ext as "jpeg" | "png" | "gif";
+      const imageBuffer = await fetchStoredFile(imageUrl);
+      const extMatch = imageUrl.toLowerCase().match(/\.([a-z]+)(?:\?|$)/);
+      const raw = extMatch?.[1] || "jpeg";
+      const extension = (raw === "jpg" ? "jpeg" : raw) as "jpeg" | "png" | "gif";
 
       const imageId = wb.addImage({
         buffer: imageBuffer as unknown as ExcelJS.Buffer,
@@ -210,16 +210,17 @@ export async function GET(
       description,                     // D: Specification / Description
       specs.voltage || "",             // E: Voltage
       specs.luminous_flux || specs.lumen || "",  // F: Lumen
-      specs.cct || "",                 // G: CCT / Color
-      specs.chip || "",                // H: Chip
-      specs.cri || "",                 // I: CRI
-      specs.power_factor || "",        // J: Power Factor
-      specs.beam_angle || "",          // K: Beam Angle
-      specs.material || "",            // L: Material
-      specs.dimensions || specs.product_size || "",  // M: Product Size
-      specs.ip_rating || "",           // N: IP
-      Number(item.unitPrice),          // O: Unit Price
-      item.notes || "",                // P: Remark
+      specs.warranty || "",            // G: Warranty
+      specs.cct || "",                 // H: CCT / Color
+      specs.chip || "",                // I: Chip
+      specs.cri || "",                 // J: CRI
+      specs.power_factor || "",        // K: Power Factor
+      specs.beam_angle || "",          // L: Beam Angle
+      specs.material || "",            // M: Material
+      specs.dimensions || specs.product_size || "",  // N: Product Size
+      specs.ip_rating || "",           // O: IP
+      Number(item.unitPrice),          // P: Unit Price
+      item.notes || "",                // Q: Remark
     ];
 
     values.forEach((v, i) => {
@@ -250,7 +251,7 @@ export async function GET(
   }
 
   // ── Footer row ──
-  ws.mergeCells(`A${rowIdx}:P${rowIdx}`);
+  ws.mergeCells(`A${rowIdx}:Q${rowIdx}`);
   const footerCell = ws.getCell(rowIdx, 1);
   footerCell.value = isZh ? "以上报价为含税出厂价" : "All prices above are factory prices including tax";
   footerCell.font = { bold: true, size: 12, name: "Arial" };

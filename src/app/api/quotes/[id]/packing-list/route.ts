@@ -3,8 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import ExcelJS from "exceljs";
 import { format } from "date-fns";
-import path from "path";
-import { readFile } from "fs/promises";
+import { fetchStoredFile } from "@/lib/supabase-storage";
 
 export async function GET(
   _request: NextRequest,
@@ -258,11 +257,10 @@ export async function GET(
     const imageUrl = product.images?.[0]?.url;
     if (imageUrl) {
       try {
-        const imagePath = imageUrl.replace("/api/files/", "");
-        const fullPath = path.join(process.cwd(), "uploads", imagePath);
-        const imageBuffer = await readFile(fullPath);
-        const ext = path.extname(fullPath).toLowerCase().replace(".", "");
-        const extension = ext === "jpg" ? "jpeg" : ext as "jpeg" | "png" | "gif";
+        const imageBuffer = await fetchStoredFile(imageUrl);
+        const extMatch = imageUrl.toLowerCase().match(/\.([a-z]+)(?:\?|$)/);
+        const raw = extMatch?.[1] || "jpeg";
+        const extension = (raw === "jpg" ? "jpeg" : raw) as "jpeg" | "png" | "gif";
 
         const imageId = wb.addImage({
           buffer: imageBuffer as unknown as ExcelJS.Buffer,
