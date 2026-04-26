@@ -51,6 +51,26 @@ function coerceSpec(v: string | string[] | undefined): string {
   return v || "";
 }
 
+/**
+ * Auto-generate URL-safe slug from product name / model.
+ * Falls back through nameEn → nameZh → modelNumber and appends a short
+ * random suffix to avoid collisions on the unique constraint.
+ */
+function autoSlug(nameEn: string, nameZh: string, model: string): string {
+  const candidates = [nameEn, nameZh, model, "product"];
+  let base = "";
+  for (const c of candidates) {
+    base = c.toLowerCase().trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+    if (base) break;
+  }
+  const suffix = Math.random().toString(36).slice(2, 6);
+  return `${base || "product"}-${suffix}`;
+}
+
 // ── Component ──
 
 export function ProductForm({ initialData, isEditing }: ProductFormProps) {
@@ -179,8 +199,11 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!slug || !modelNumber || !nameZh) { toast.error("请填写Slug、型号和中文名称"); return; }
+    if (!modelNumber || !nameZh) { toast.error("请填写型号和中文名称"); return; }
     setLoading(true);
+
+    // Editing: keep existing slug. Creating: derive one automatically.
+    const finalSlug = slug || autoSlug(nameEn, nameZh, modelNumber);
 
     // Build specs payload: filter empties
     const specsPayload: Record<string, string> = {};
@@ -189,7 +212,7 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
     }
 
     const payload = {
-      slug, modelNumber,
+      slug: finalSlug, modelNumber,
       content: {
         zh: { name: nameZh, description: descZh },
         en: { name: nameEn, description: descEn },
@@ -265,15 +288,9 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
         <TabsContent value="basic">
           <Card>
             <CardContent className="pt-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Slug <span className="text-red-500">*</span></Label>
-                  <Input value={slug} onChange={(e) => setSlug(e.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                  <Label>型号 <span className="text-red-500">*</span></Label>
-                  <Input value={modelNumber} onChange={(e) => setModelNumber(e.target.value)} required />
-                </div>
+              <div className="space-y-2">
+                <Label>型号 <span className="text-red-500">*</span></Label>
+                <Input value={modelNumber} onChange={(e) => setModelNumber(e.target.value)} required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
