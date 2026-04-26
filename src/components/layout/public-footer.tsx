@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Mail, Phone, MapPin } from "lucide-react";
 
 export function PublicFooter() {
@@ -9,15 +8,8 @@ export function PublicFooter() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
           <div>
-            <div className="mb-4">
-              <Image
-                src="/logo.jpg"
-                alt="欧星"
-                width={150}
-                height={26}
-                className="h-6 w-auto brightness-0 invert opacity-80"
-                unoptimized
-              />
+            <div className="mb-4 text-lg font-semibold tracking-tight text-white">
+              欧星照明
             </div>
             <p className="text-sm text-neutral-500 leading-relaxed">
               专业LED照明产品制造商，提供面板灯、筒灯、射灯等全系列LED产品。

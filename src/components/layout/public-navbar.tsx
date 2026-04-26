@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Menu, X, Phone, Mail, ClipboardList, Settings } from "lucide-react";
@@ -71,16 +70,11 @@ export function PublicNavbar() {
       >
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center shrink-0">
-            <Image
-              src="/logo.jpg"
-              alt="欧星"
-              width={180}
-              height={32}
-              className="h-7 sm:h-8 w-auto"
-              priority
-              unoptimized
-            />
+          <Link
+            href="/"
+            className="shrink-0 text-lg sm:text-xl font-semibold tracking-tight text-neutral-900"
+          >
+            欧星照明
           </Link>
 
           {/* Desktop nav links */}
