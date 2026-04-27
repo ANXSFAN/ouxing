@@ -380,8 +380,11 @@ function ProductCard({
       </div>
 
       {/* Content */}
-      <div className="p-5 flex-1 flex flex-col">
-        <span className="text-[11px] font-medium text-gray-400 uppercase tracking-widest">
+      <div className="p-5 flex-1 flex flex-col min-w-0">
+        <span
+          className="text-[11px] font-medium text-gray-400 uppercase tracking-widest block truncate"
+          title={catName || product.modelNumber}
+        >
           {catName || product.modelNumber}
         </span>
 
@@ -391,7 +394,7 @@ function ProductCard({
 
         {/* Highlight specs grid (my-led-erp style) */}
         {highlightSpecs.length > 0 && (
-          <div className="grid grid-cols-2 gap-px bg-gray-200 rounded-lg overflow-hidden mb-3">
+          <div className="grid grid-cols-2 gap-px bg-gray-200 rounded-lg overflow-hidden mt-auto">
             {highlightSpecs.slice(0, 4).map((spec, i) => (
               <div
                 key={spec.key}
@@ -410,11 +413,6 @@ function ProductCard({
             ))}
           </div>
         )}
-
-        {/* Bottom: model number */}
-        <div className="mt-auto pt-3 border-t border-gray-100">
-          <span className="text-xs text-gray-400 font-mono">{product.modelNumber}</span>
-        </div>
       </div>
     </Link>
   );
