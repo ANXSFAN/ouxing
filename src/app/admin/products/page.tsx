@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/page-header";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Plus, Pencil, Trash2, Package, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, Search, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
 import { toast } from "sonner";
 
 interface Product {
@@ -223,6 +223,11 @@ export default function ProductsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="sm" asChild title="下载规格书（中文）">
+                          <a href={`/api/products/${product.id}/datasheet?lang=zh`} target="_blank" rel="noopener noreferrer">
+                            <FileDown className="w-4 h-4" />
+                          </a>
+                        </Button>
                         <Button variant="ghost" size="sm" asChild>
                           <Link href={`/admin/products/${product.id}/edit`}>
                             <Pencil className="w-4 h-4" />
