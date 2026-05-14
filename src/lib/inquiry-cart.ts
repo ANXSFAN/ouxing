@@ -2,6 +2,7 @@
 
 export interface InquiryCartItem {
   productId: string;
+  variantId: string | null;
   name: string;
   modelNumber: string;
   imageUrl?: string;
@@ -11,11 +12,18 @@ export interface InquiryCartItem {
 
 const STORAGE_KEY = "sysled_inquiry_cart";
 
+/** Stable key for matching a cart line — distinguishes variants of the same product. */
+export function cartKey(productId: string, variantId: string | null | undefined): string {
+  return `${productId}::${variantId ?? ""}`;
+}
+
 export function getCartItems(): InquiryCartItem[] {
   if (typeof window === "undefined") return [];
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    const items = data ? (JSON.parse(data) as InquiryCartItem[]) : [];
+    // Legacy carts may lack variantId; normalize so downstream code can rely on it.
+    return items.map((i) => ({ ...i, variantId: i.variantId ?? null }));
   } catch {
     return [];
   }
@@ -29,7 +37,8 @@ export function setCartItems(items: InquiryCartItem[]) {
 
 export function addToCart(item: Omit<InquiryCartItem, "quantity" | "expectedPrice">) {
   const items = getCartItems();
-  const existing = items.find((i) => i.productId === item.productId);
+  const key = cartKey(item.productId, item.variantId);
+  const existing = items.find((i) => cartKey(i.productId, i.variantId) === key);
   if (existing) {
     existing.quantity += 1;
   } else {
@@ -38,13 +47,19 @@ export function addToCart(item: Omit<InquiryCartItem, "quantity" | "expectedPric
   setCartItems(items);
 }
 
-export function removeFromCart(productId: string) {
-  setCartItems(getCartItems().filter((i) => i.productId !== productId));
+export function removeFromCart(productId: string, variantId: string | null = null) {
+  const key = cartKey(productId, variantId);
+  setCartItems(getCartItems().filter((i) => cartKey(i.productId, i.variantId) !== key));
 }
 
-export function updateCartItem(productId: string, updates: Partial<InquiryCartItem>) {
+export function updateCartItem(
+  productId: string,
+  variantId: string | null,
+  updates: Partial<InquiryCartItem>,
+) {
   const items = getCartItems();
-  const item = items.find((i) => i.productId === productId);
+  const key = cartKey(productId, variantId);
+  const item = items.find((i) => cartKey(i.productId, i.variantId) === key);
   if (item) Object.assign(item, updates);
   setCartItems(items);
 }

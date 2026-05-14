@@ -12,10 +12,13 @@ export async function GET(
     where: { id },
     include: {
       category: true,
-      images: { orderBy: { sortOrder: "asc" } },
+      images: { where: { variantId: null }, orderBy: { sortOrder: "asc" } },
       documents: { orderBy: { createdAt: "desc" } },
       certificates: { orderBy: { createdAt: "desc" } },
-      variants: { orderBy: { sortOrder: "asc" } },
+      variants: {
+        orderBy: { sortOrder: "asc" },
+        include: { images: { orderBy: { sortOrder: "asc" } } },
+      },
     },
   });
   if (!product) return NextResponse.json({ error: "产品不存在" }, { status: 404 });
@@ -46,9 +49,10 @@ export async function PUT(
     },
   });
 
-  // Update images
+  // Update product-level images (variantId IS NULL). Variant-level images are
+  // managed below alongside their variant — cascade deletes when a variant is removed.
   if (body.images !== undefined) {
-    await prisma.productImage.deleteMany({ where: { productId: id } });
+    await prisma.productImage.deleteMany({ where: { productId: id, variantId: null } });
     if (body.images?.length) {
       await prisma.productImage.createMany({
         data: body.images.map(
@@ -77,22 +81,39 @@ export async function PUT(
     }
   }
 
-  // Update variants
+  // Update variants (and their own images). Deleting a variant cascades to its images.
   if (body.variants !== undefined) {
     await prisma.productVariant.deleteMany({ where: { productId: id } });
     if (body.variants?.length) {
-      await prisma.productVariant.createMany({
-        data: body.variants.map(
-          (v: { sku: string; price?: number | null; specs?: Record<string, string> | null; sortOrder?: number; isActive?: boolean }, index: number) => ({
+      for (let i = 0; i < body.variants.length; i++) {
+        const v = body.variants[i] as {
+          sku: string; price?: number | null; specs?: Record<string, string> | null;
+          sortOrder?: number; isActive?: boolean;
+          images?: { url: string; fileName?: string }[];
+        };
+        const variant = await prisma.productVariant.create({
+          data: {
             productId: id,
             sku: v.sku,
             price: v.price ?? null,
             specs: v.specs || {},
-            sortOrder: v.sortOrder ?? index,
+            sortOrder: v.sortOrder ?? i,
             isActive: v.isActive ?? true,
-          })
-        ),
-      });
+          },
+        });
+        if (v.images?.length) {
+          await prisma.productImage.createMany({
+            data: v.images.map((img, idx) => ({
+              productId: id,
+              variantId: variant.id,
+              url: img.url,
+              alt: img.fileName || "",
+              sortOrder: idx,
+              isPrimary: false,
+            })),
+          });
+        }
+      }
     }
   }
 

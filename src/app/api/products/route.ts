@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         category: true,
-        images: { orderBy: { sortOrder: "asc" }, take: 1 },
+        images: { where: { variantId: null }, orderBy: { sortOrder: "asc" }, take: 1 },
+        variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  // Handle images
+  // Handle product-level images (variantId IS NULL)
   if (body.images?.length) {
     await prisma.productImage.createMany({
       data: body.images.map(
@@ -110,20 +111,37 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Handle variants
+  // Handle variants (and their own images, if any)
   if (body.variants?.length) {
-    await prisma.productVariant.createMany({
-      data: body.variants.map(
-        (v: { sku: string; price?: number | null; specs?: Record<string, string> | null; sortOrder?: number; isActive?: boolean }, index: number) => ({
+    for (let i = 0; i < body.variants.length; i++) {
+      const v = body.variants[i] as {
+        sku: string; price?: number | null; specs?: Record<string, string> | null;
+        sortOrder?: number; isActive?: boolean;
+        images?: { url: string; fileName?: string }[];
+      };
+      const variant = await prisma.productVariant.create({
+        data: {
           productId: product.id,
           sku: v.sku,
           price: v.price ?? null,
           specs: v.specs || {},
-          sortOrder: v.sortOrder ?? index,
+          sortOrder: v.sortOrder ?? i,
           isActive: v.isActive ?? true,
-        })
-      ),
-    });
+        },
+      });
+      if (v.images?.length) {
+        await prisma.productImage.createMany({
+          data: v.images.map((img, idx) => ({
+            productId: product.id,
+            variantId: variant.id,
+            url: img.url,
+            alt: img.fileName || "",
+            sortOrder: idx,
+            isPrimary: false,
+          })),
+        });
+      }
+    }
   }
 
   // Handle certificates

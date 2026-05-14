@@ -54,6 +54,7 @@ interface InquiryDetail {
   shippedAt: string | null;
   createdAt: string;
   products: {
+    id: string;
     quantity: number | null;
     expectedPrice: string | null;
     product: {
@@ -63,6 +64,12 @@ interface InquiryDetail {
       category: { content: Record<string, { name?: string }> } | null;
       images: { url: string }[];
     };
+    variant: {
+      id: string;
+      sku: string;
+      specs: Record<string, string>;
+      images: { url: string }[];
+    } | null;
   }[];
 }
 
@@ -217,10 +224,14 @@ export default function InquiryDetailPage() {
                     const catName = p.product.category
                       ? ((p.product.category.content as Record<string, { name?: string }>)?.zh?.name || "")
                       : "";
-                    const imgUrl = p.product.images?.[0]?.url;
+                    const variantLabel = p.variant
+                      ? Object.entries(p.variant.specs || {}).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(" · ")
+                      : "";
+                    const sku = p.variant?.sku || p.product.modelNumber;
+                    const imgUrl = p.variant?.images?.[0]?.url || p.product.images?.[0]?.url;
                     return (
                       <div
-                        key={p.product.id}
+                        key={p.id}
                         className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
                       >
                         <div className="w-14 h-14 rounded-lg bg-white border border-slate-100 relative overflow-hidden shrink-0">
@@ -231,9 +242,12 @@ export default function InquiryDetailPage() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{pName}</p>
-                          <p className="text-xs text-slate-500">
-                            {p.product.modelNumber}{catName ? ` · ${catName}` : ""}
+                          <p className="text-sm font-medium truncate">
+                            {pName}
+                            {variantLabel && <span className="ml-1.5 text-slate-500 font-normal">（{variantLabel}）</span>}
+                          </p>
+                          <p className="text-xs text-slate-500 break-all">
+                            {sku}{catName ? ` · ${catName}` : ""}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">

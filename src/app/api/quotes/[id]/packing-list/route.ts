@@ -24,10 +24,11 @@ export async function GET(
         include: {
           product: {
             include: {
-              images: { orderBy: { sortOrder: "asc" }, take: 1 },
+              images: { where: { variantId: null }, orderBy: { sortOrder: "asc" }, take: 1 },
               category: true,
             },
           },
+          variant: { include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } } },
         },
       },
       createdBy: { select: { name: true } },
@@ -177,7 +178,12 @@ export async function GET(
 
   for (const item of quote.items) {
     const product = item.product;
-    const specs = (product.specs as Record<string, string>) || {};
+    const variant = item.variant;
+    const productSpecs = (product.specs as Record<string, string>) || {};
+    const variantSpecs = (variant?.specs as Record<string, string> | undefined) || {};
+    // Variant specs override product defaults (e.g. different carton size for some SKUs).
+    const specs: Record<string, string> = { ...productSpecs, ...variantSpecs };
+    const skuModel = variant?.sku || product.modelNumber;
     const description = loc(product.content, "description") || item.specification || "";
     const categoryName = product.category ? loc(product.category.content, "name") : "";
 
@@ -203,7 +209,7 @@ export async function GET(
 
     // Static value columns
     const values: [number, unknown][] = [
-      [1, product.modelNumber],
+      [1, skuModel],
       [2, ""],
       [3, categoryName || item.productName],
       [4, description],
@@ -253,8 +259,8 @@ export async function GET(
       else if (col === 19) cell.numFmt = "0.00";
     });
 
-    // Insert product image if available
-    const imageUrl = product.images?.[0]?.url;
+    // Insert image: variant-specific first, then product default.
+    const imageUrl = variant?.images?.[0]?.url || product.images?.[0]?.url;
     if (imageUrl) {
       try {
         const imageBuffer = await fetchStoredFile(imageUrl);

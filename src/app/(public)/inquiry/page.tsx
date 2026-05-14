@@ -14,7 +14,7 @@ import {
   Package, ShoppingBag, Building2, Phone, MessageSquare,
 } from "lucide-react";
 import {
-  getCartItems, setCartItems, removeFromCart, clearCart, addToCart,
+  getCartItems, setCartItems, removeFromCart, clearCart, addToCart, cartKey,
   type InquiryCartItem,
 } from "@/lib/inquiry-cart";
 
@@ -40,30 +40,40 @@ function InquiryContent() {
     return () => window.removeEventListener("inquiry-cart-change", onCartChange);
   }, []);
 
-  // If coming from product page with ?product=xxx, add it to cart
+  // If coming from product page with ?product=xxx[&variant=yyy], add it to cart.
   const productId = searchParams.get("product");
+  const variantIdParam = searchParams.get("variant");
   useEffect(() => {
     if (!productId) return;
-    const existing = getCartItems().find((i) => i.productId === productId);
+    const key = cartKey(productId, variantIdParam);
+    const existing = getCartItems().find((i) => cartKey(i.productId, i.variantId) === key);
     if (existing) return;
     fetch(`/api/products/${productId}`)
       .then((r) => r.json())
       .then((d) => {
-        if (d.id) {
-          addToCart({
-            productId: d.id,
-            name: getName(d.content) || d.modelNumber,
-            modelNumber: d.modelNumber,
-            imageUrl: d.images?.[0]?.url,
-          });
-        }
+        if (!d.id) return;
+        const variant = variantIdParam
+          ? (d.variants as { id: string; sku: string; specs: Record<string, string>; images?: { url: string }[] }[] | undefined)
+              ?.find((v) => v.id === variantIdParam)
+          : null;
+        const specLabel = variant
+          ? Object.entries(variant.specs || {}).filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join(" · ")
+          : "";
+        const baseName = getName(d.content) || d.modelNumber;
+        addToCart({
+          productId: d.id,
+          variantId: variant?.id ?? null,
+          name: specLabel ? `${baseName}（${specLabel}）` : baseName,
+          modelNumber: variant?.sku || d.modelNumber,
+          imageUrl: variant?.images?.[0]?.url || d.images?.[0]?.url,
+        });
       })
       .catch(() => {});
-  }, [productId]);
+  }, [productId, variantIdParam]);
 
-  const updateQty = (productId: string, delta: number) => {
+  const updateQty = (key: string, delta: number) => {
     const updated = items.map((i) => {
-      if (i.productId === productId) {
+      if (cartKey(i.productId, i.variantId) === key) {
         return { ...i, quantity: Math.max(1, i.quantity + delta) };
       }
       return i;
@@ -72,10 +82,10 @@ function InquiryContent() {
     setCartItems(updated);
   };
 
-  const setQty = (productId: string, value: string) => {
+  const setQty = (key: string, value: string) => {
     const num = parseInt(value, 10);
     const updated = items.map((i) => {
-      if (i.productId === productId) {
+      if (cartKey(i.productId, i.variantId) === key) {
         return { ...i, quantity: isNaN(num) || num < 1 ? 1 : num };
       }
       return i;
@@ -84,9 +94,9 @@ function InquiryContent() {
     setCartItems(updated);
   };
 
-  const updateExpectedPrice = (productId: string, price: string) => {
+  const updateExpectedPrice = (key: string, price: string) => {
     const updated = items.map((i) => {
-      if (i.productId === productId) {
+      if (cartKey(i.productId, i.variantId) === key) {
         return { ...i, expectedPrice: price ? parseFloat(price) : undefined };
       }
       return i;
@@ -95,8 +105,8 @@ function InquiryContent() {
     setCartItems(updated);
   };
 
-  const handleRemove = (productId: string) => {
-    removeFromCart(productId);
+  const handleRemove = (productId: string, variantId: string | null) => {
+    removeFromCart(productId, variantId);
     setItems(getCartItems());
   };
 
@@ -112,6 +122,7 @@ function InquiryContent() {
       ...form,
       productIds: items.map((i) => ({
         productId: i.productId,
+        variantId: i.variantId,
         quantity: i.quantity,
         expectedPrice: i.expectedPrice,
       })),
@@ -201,8 +212,10 @@ function InquiryContent() {
               </div>
             ) : (
               <div className="divide-y divide-neutral-100">
-                {items.map((item) => (
-                  <div key={item.productId} className="flex gap-4 p-4 hover:bg-neutral-50/50 transition-colors">
+                {items.map((item) => {
+                  const itemKey = cartKey(item.productId, item.variantId);
+                  return (
+                  <div key={itemKey} className="flex gap-4 p-4 hover:bg-neutral-50/50 transition-colors">
                     {/* Image */}
                     <div className="w-20 h-20 bg-neutral-50 rounded-lg relative overflow-hidden shrink-0 border border-neutral-100">
                       {item.imageUrl ? (
@@ -223,7 +236,7 @@ function InquiryContent() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => handleRemove(item.productId)}
+                          onClick={() => handleRemove(item.productId, item.variantId)}
                           className="text-neutral-300 hover:text-red-500 transition-colors p-1 -mr-1"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -236,7 +249,7 @@ function InquiryContent() {
                           <span className="text-xs text-neutral-400 mr-1.5">数量</span>
                           <button
                             type="button"
-                            onClick={() => updateQty(item.productId, -1)}
+                            onClick={() => updateQty(itemKey, -1)}
                             className="w-7 h-7 rounded-md border border-neutral-200 flex items-center justify-center text-neutral-400 hover:border-neutral-300 hover:text-neutral-600 transition-colors"
                           >
                             <Minus className="w-3 h-3" />
@@ -245,12 +258,12 @@ function InquiryContent() {
                             type="number"
                             min="1"
                             value={item.quantity}
-                            onChange={(e) => setQty(item.productId, e.target.value)}
+                            onChange={(e) => setQty(itemKey, e.target.value)}
                             className="w-14 h-7 text-center text-sm font-medium tabular-nums border border-neutral-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-neutral-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                           <button
                             type="button"
-                            onClick={() => updateQty(item.productId, 1)}
+                            onClick={() => updateQty(itemKey, 1)}
                             className="w-7 h-7 rounded-md border border-neutral-200 flex items-center justify-center text-neutral-400 hover:border-neutral-300 hover:text-neutral-600 transition-colors"
                           >
                             <Plus className="w-3 h-3" />
@@ -267,7 +280,7 @@ function InquiryContent() {
                               min="0"
                               step="0.01"
                               value={item.expectedPrice ?? ""}
-                              onChange={(e) => updateExpectedPrice(item.productId, e.target.value)}
+                              onChange={(e) => updateExpectedPrice(itemKey, e.target.value)}
                               placeholder=""
                               className="pl-7 w-28 h-8 text-sm"
                             />
@@ -276,7 +289,8 @@ function InquiryContent() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

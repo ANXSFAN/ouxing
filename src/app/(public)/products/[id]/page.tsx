@@ -17,12 +17,13 @@ import { cn } from "@/lib/utils";
 
 type ContentJson = Record<string, { name?: string; description?: string }>;
 interface AttrDef { key: string; name: Record<string, string>; unit: string | null; isHighlight: boolean }
-interface VariantRow { id: string; sku: string; price: string | null; specs: Record<string, string>; isActive: boolean }
+interface ProductImg { id: string; url: string; alt: string | null }
+interface VariantRow { id: string; sku: string; price: string | null; specs: Record<string, string>; isActive: boolean; images: ProductImg[] }
 interface ProductDetail {
   id: string; slug: string; modelNumber: string;
   content: ContentJson; specs: Record<string, string | string[]> | null;
   category: { id: string; content: ContentJson } | null;
-  images: { id: string; url: string; alt: string | null }[];
+  images: ProductImg[];
   documents: { id: string; name: string; filePath: string; fileSize: number; docType: string }[];
   certificates: { id: string; name: string; certType: string; filePath: string; fileSize: number }[];
   variants: VariantRow[];
@@ -94,6 +95,15 @@ export default function ProductDetailPage() {
       variantDimensions.every((dim) => v.specs?.[dim.key] === selections[dim.key])
     ) || null;
   }, [activeVariants, variantDimensions, selections]);
+
+  // Gallery shows variant images when the variant has its own, otherwise falls back to product defaults.
+  const displayImages: ProductImg[] = useMemo(() => {
+    if (currentVariant && currentVariant.images.length > 0) return currentVariant.images;
+    return product?.images || [];
+  }, [currentVariant, product?.images]);
+
+  // Reset the active thumbnail when switching variants so we don't index past the new gallery.
+  useEffect(() => { setSelectedImg(0); }, [currentVariant?.id]);
 
   // Click a chip -> snap to the variant that best matches (dim=val + current selections).
   // Guarantees selections always map to a real variant; avoids phantom combinations.
@@ -177,9 +187,9 @@ export default function ProductDetailPage() {
           {/* ── Left: Image Gallery ── */}
           <div>
             <div className="aspect-square bg-gray-50 border border-gray-100 rounded-xl relative overflow-hidden">
-              {product.images[selectedImg] ? (
+              {displayImages[selectedImg] ? (
                 <Image
-                  src={product.images[selectedImg].url}
+                  src={displayImages[selectedImg].url}
                   alt={name}
                   fill
                   className="object-contain p-6 transition-opacity duration-300"
@@ -191,22 +201,22 @@ export default function ProductDetailPage() {
                   <span className="text-xs uppercase font-mono mt-2">NO IMAGE</span>
                 </div>
               )}
-              {product.images.length > 1 && (
+              {displayImages.length > 1 && (
                 <>
                   <button onClick={() => setSelectedImg(Math.max(0, selectedImg - 1))} disabled={selectedImg === 0}
                     className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 shadow flex items-center justify-center disabled:opacity-20 hover:bg-white transition-all">
                     <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <button onClick={() => setSelectedImg(Math.min(product.images.length - 1, selectedImg + 1))} disabled={selectedImg === product.images.length - 1}
+                  <button onClick={() => setSelectedImg(Math.min(displayImages.length - 1, selectedImg + 1))} disabled={selectedImg === displayImages.length - 1}
                     className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 shadow flex items-center justify-center disabled:opacity-20 hover:bg-white transition-all">
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </>
               )}
             </div>
-            {product.images.length > 1 && (
+            {displayImages.length > 1 && (
               <div className="flex gap-2 mt-3">
-                {product.images.map((img, i) => (
+                {displayImages.map((img, i) => (
                   <button key={img.id} onClick={() => setSelectedImg(i)}
                     className={cn("w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
                       i === selectedImg ? "border-blue-600" : "border-gray-100 hover:border-gray-300")}>
@@ -295,9 +305,10 @@ export default function ProductDetailPage() {
                 onClick={() => {
                   addToCart({
                     productId: product.id,
+                    variantId: currentVariant?.id ?? null,
                     name: variantLabel ? `${name}（${variantLabel}）` : name,
                     modelNumber: displaySku,
-                    imageUrl: product.images[0]?.url,
+                    imageUrl: displayImages[0]?.url,
                   });
                   toast.success("已加入询价单");
                 }}
@@ -319,9 +330,7 @@ export default function ProductDetailPage() {
             <TabsList className="bg-gray-100 rounded-lg p-1">
               <TabsTrigger value="specs" className="rounded-md">技术参数</TabsTrigger>
               {desc && <TabsTrigger value="desc" className="rounded-md">产品描述</TabsTrigger>}
-              {(product.documents.length > 0 || product.certificates.length > 0) && (
-                <TabsTrigger value="downloads" className="rounded-md">资料下载</TabsTrigger>
-              )}
+              <TabsTrigger value="downloads" className="rounded-md">资料下载</TabsTrigger>
             </TabsList>
 
             <TabsContent value="specs" className="mt-6">
@@ -345,10 +354,36 @@ export default function ProductDetailPage() {
               </TabsContent>
             )}
 
-            {(product.documents.length > 0 || product.certificates.length > 0) && (
-              <TabsContent value="downloads" className="mt-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {product.documents.map((doc) => (
+            <TabsContent value="downloads" className="mt-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Auto-generated datasheet — always available, two languages. */}
+                <a
+                  href={`/api/products/${product.id}/datasheet?lang=zh`}
+                  className="flex items-center gap-3 p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600 transition-colors">产品规格书</p>
+                    <p className="text-xs text-gray-400">PDF · 中文</p>
+                  </div>
+                  <Download className="w-4 h-4 text-gray-300 group-hover:text-blue-600 transition-colors shrink-0" />
+                </a>
+                <a
+                  href={`/api/products/${product.id}/datasheet?lang=en`}
+                  className="flex items-center gap-3 p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all group"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600 transition-colors">Product Datasheet</p>
+                    <p className="text-xs text-gray-400">PDF · English</p>
+                  </div>
+                  <Download className="w-4 h-4 text-gray-300 group-hover:text-blue-600 transition-colors shrink-0" />
+                </a>
+                {product.documents.map((doc) => (
                     <a key={doc.id} href={doc.filePath} download
                       className="flex items-center gap-3 p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all group">
                       <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
@@ -374,9 +409,8 @@ export default function ProductDetailPage() {
                       <Download className="w-4 h-4 text-gray-300 group-hover:text-green-600 transition-colors shrink-0" />
                     </a>
                   ))}
-                </div>
-              </TabsContent>
-            )}
+              </div>
+            </TabsContent>
           </Tabs>
         </div>
       </div>

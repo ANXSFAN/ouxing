@@ -31,7 +31,7 @@ interface AttributeDef {
 
 interface UploadedImage { url: string; fileName: string }
 interface UploadedFile { url: string; fileName: string; fileSize: number; mimeType: string; name?: string; docType?: string; certType?: string }
-interface VariantRow { sku: string; price: string; specs: Record<string, string>; isActive: boolean }
+interface VariantRow { sku: string; price: string; specs: Record<string, string>; isActive: boolean; images: UploadedImage[] }
 
 interface ProductFormProps {
   initialData?: Record<string, unknown>;
@@ -140,11 +140,15 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
         })));
       }
       if (initialData.variants) {
-        setVariants((initialData.variants as { sku: string; price: unknown; specs: Record<string, string>; isActive: boolean }[]).map((v) => ({
+        setVariants((initialData.variants as {
+          sku: string; price: unknown; specs: Record<string, string>; isActive: boolean;
+          images?: { url: string; alt?: string }[];
+        }[]).map((v) => ({
           sku: v.sku,
           price: v.price != null ? String(v.price) : "",
           specs: v.specs || {},
           isActive: v.isActive ?? true,
+          images: (v.images || []).map((img) => ({ url: img.url, fileName: img.alt || "" })),
         })));
       }
     }
@@ -167,7 +171,7 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
     setVariants((prev) => {
       const base = modelNumber || "SKU";
       const suffix = prev.length + 1;
-      return [...prev, { sku: `${base}-${suffix}`, price: "", specs: {}, isActive: true }];
+      return [...prev, { sku: `${base}-${suffix}`, price: "", specs: {}, isActive: true, images: [] }];
     });
   }, [modelNumber]);
 
@@ -189,6 +193,10 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
       delete next[key];
       return { ...v, specs: next };
     }));
+  }, []);
+
+  const setVariantImages = useCallback((i: number, imgs: UploadedImage[]) => {
+    setVariants((prev) => prev.map((v, idx) => (idx === i ? { ...v, images: imgs } : v)));
   }, []);
 
   const removeVariant = useCallback((i: number) => {
@@ -234,6 +242,7 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
             specs: cleanSpecs,
             sortOrder: i,
             isActive: v.isActive,
+            images: v.images.map((img) => ({ url: img.url, fileName: img.fileName })),
           };
         }),
       images: images.map((img) => ({ url: img.url, fileName: img.fileName })),
@@ -460,9 +469,12 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
                       index={i}
                       variant={v}
                       attributes={productAttrs}
+                      shippingAttributes={shippingAttrs}
+                      productSpecs={specs}
                       onChange={(patch) => updateVariant(i, patch)}
                       onSpecChange={(key, val) => setVariantSpec(i, key, val)}
                       onSpecRemove={(key) => removeVariantSpec(i, key)}
+                      onImagesChange={(imgs) => setVariantImages(i, imgs)}
                       onRemove={() => removeVariant(i)}
                     />
                   ))}
@@ -525,13 +537,16 @@ interface VariantCardProps {
   index: number;
   variant: VariantRow;
   attributes: AttributeDef[];
+  shippingAttributes: AttributeDef[];
+  productSpecs: Record<string, string>;
   onChange: (patch: Partial<VariantRow>) => void;
   onSpecChange: (key: string, value: string) => void;
   onSpecRemove: (key: string) => void;
+  onImagesChange: (imgs: UploadedImage[]) => void;
   onRemove: () => void;
 }
 
-function VariantCard({ index, variant, attributes, onChange, onSpecChange, onSpecRemove, onRemove }: VariantCardProps) {
+function VariantCard({ index, variant, attributes, shippingAttributes, productSpecs, onChange, onSpecChange, onSpecRemove, onImagesChange, onRemove }: VariantCardProps) {
   const usedKeys = new Set(Object.keys(variant.specs));
   const availableAttrs = attributes.filter((a) => !usedKeys.has(a.key));
 
@@ -608,6 +623,47 @@ function VariantCard({ index, variant, attributes, onChange, onSpecChange, onSpe
         </div>
         {Object.keys(variant.specs).length === 0 && (
           <p className="text-xs text-slate-400 mt-1">未设置任何覆盖，此变体将显示为产品默认参数。</p>
+        )}
+      </div>
+
+      {/* Variant-specific shipping overrides */}
+      {shippingAttributes.length > 0 && (
+        <div className="pl-10">
+          <Label className="text-xs text-slate-500 block mb-2">运输覆盖</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {shippingAttributes.map((attr) => {
+              const val = variant.specs[attr.key] ?? "";
+              const fallback = productSpecs[attr.key] || "";
+              return (
+                <div key={attr.key} className="space-y-1">
+                  <Label className="text-[11px] text-slate-400 font-normal">
+                    {attrLabel(attr)}{attr.unit && <span className="ml-0.5">({attr.unit})</span>}
+                  </Label>
+                  <Input
+                    type="number"
+                    value={val}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "") onSpecRemove(attr.key);
+                      else onSpecChange(attr.key, v);
+                    }}
+                    placeholder={fallback ? `默认 ${fallback}` : "—"}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-slate-400 mt-1.5">留空则沿用&ldquo;包装运输&rdquo;里的默认值。</p>
+        </div>
+      )}
+
+      {/* Variant-specific images */}
+      <div className="pl-10">
+        <Label className="text-xs text-slate-500 block mb-2">变体图片</Label>
+        <ImageUpload images={variant.images} onChange={onImagesChange} maxImages={6} />
+        {variant.images.length === 0 && (
+          <p className="text-xs text-slate-400 mt-1">未上传，此变体将显示产品默认图片。</p>
         )}
       </div>
     </div>

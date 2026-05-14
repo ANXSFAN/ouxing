@@ -23,10 +23,11 @@ export async function GET(
         include: {
           product: {
             include: {
-              images: { orderBy: { sortOrder: "asc" }, take: 2 },
+              images: { where: { variantId: null }, orderBy: { sortOrder: "asc" }, take: 2 },
               category: true,
             },
           },
+          variant: { include: { images: { orderBy: { sortOrder: "asc" }, take: 2 } } },
         },
       },
       createdBy: { select: { name: true } },
@@ -198,8 +199,13 @@ export async function GET(
 
   for (const item of quote.items) {
     const product = item.product;
-    const specs = (product.specs as Record<string, string>) || {};
+    const variant = item.variant;
+    const productSpecs = (product.specs as Record<string, string>) || {};
+    const variantSpecs = (variant?.specs as Record<string, string> | undefined) || {};
+    const specs: Record<string, string> = { ...productSpecs, ...variantSpecs };
     const description = loc(product.content, "description") || item.specification || "";
+    const variantImages = variant?.images || [];
+    const fallbackImages = product.images || [];
 
     ws.getRow(rowIdx).height = 120;
 
@@ -235,14 +241,15 @@ export async function GET(
       cell.border = borderThin;
     });
 
-    // Insert product image 1 (column A)
-    const image1Url = product.images?.[0]?.url;
+    // Picture columns: prefer the variant's own gallery, fall back to the product's.
+    const galleryImages = variantImages.length > 0 ? variantImages : fallbackImages;
+
+    const image1Url = galleryImages[0]?.url;
     if (image1Url) {
       await addProductImage(image1Url, 0, rowIdx);
     }
 
-    // Insert product image 2 (column B)
-    const image2Url = product.images?.[1]?.url;
+    const image2Url = galleryImages[1]?.url;
     if (image2Url) {
       await addProductImage(image2Url, 1, rowIdx);
     }

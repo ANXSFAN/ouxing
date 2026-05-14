@@ -8,6 +8,7 @@ export const inquirySchema = z.object({
     .array(
       z.object({
         productId: z.string(),
+        variantId: z.string().nullable().optional(),
         quantity: z.coerce.number().int().positive().optional(),
         expectedPrice: z.coerce.number().min(0).optional(),
       })

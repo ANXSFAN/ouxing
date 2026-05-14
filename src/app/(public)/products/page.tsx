@@ -365,7 +365,7 @@ function ProductCard({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              addToCart({ productId: product.id, name, modelNumber: product.modelNumber, imageUrl: imageUrl });
+              addToCart({ productId: product.id, variantId: null, name, modelNumber: product.modelNumber, imageUrl: imageUrl });
               toast.success("已加入询价单");
             }}
             className="p-2.5 bg-white rounded-full shadow-lg text-gray-400 hover:text-blue-600 transition-colors"

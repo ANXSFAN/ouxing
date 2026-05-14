@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const quoteItemSchema = z.object({
   productId: z.string().min(1),
+  variantId: z.string().nullable().optional(),
   productName: z.string().min(1),
   productModel: z.string().min(1),
   specification: z.string().optional(),

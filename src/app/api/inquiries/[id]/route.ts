@@ -20,10 +20,11 @@ export async function GET(
         include: {
           product: {
             include: {
-              images: { take: 1 },
+              images: { where: { variantId: null }, take: 1 },
               category: true,
             },
           },
+          variant: { include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } } },
         },
       },
     },

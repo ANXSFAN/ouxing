@@ -24,7 +24,12 @@ export async function GET(request: NextRequest) {
     prisma.inquiry.findMany({
       where,
       include: {
-        products: { include: { product: { include: { images: { take: 1 } } } } },
+        products: {
+          include: {
+            product: { include: { images: { where: { variantId: null }, take: 1 } } },
+            variant: { include: { images: { orderBy: { sortOrder: "asc" }, take: 1 } } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
@@ -63,6 +68,7 @@ export async function POST(request: NextRequest) {
           ? {
               create: productIds.map((p) => ({
                 productId: p.productId,
+                variantId: p.variantId ?? null,
                 quantity: p.quantity ?? null,
                 expectedPrice: p.expectedPrice ?? null,
               })),

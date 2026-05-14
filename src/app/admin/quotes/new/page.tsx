@@ -25,12 +25,21 @@ import {
 import { ArrowLeft, Plus, Trash2, Search, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+interface ProductVariant {
+  id: string;
+  sku: string;
+  price: string | null;
+  specs: Record<string, string>;
+  isActive: boolean;
+}
+
 interface Product {
   id: string;
   content: Record<string, { name?: string }>;
   modelNumber: string;
   price: string | null;
   category: { content: Record<string, { name?: string }> } | null;
+  variants?: ProductVariant[];
 }
 
 function pName(p: Product) {
@@ -42,11 +51,57 @@ function cName(c: { content: Record<string, { name?: string }> } | null) {
 
 interface QuoteItem {
   productId: string;
+  variantId: string | null;
   productName: string;
   productModel: string;
   specification: string;
   quantity: number;
   unitPrice: number;
+}
+
+/** A single selectable row in the product picker: the product itself if it has
+ * no variants, otherwise one row per active variant. */
+interface SelectableUnit {
+  product: Product;
+  variant: ProductVariant | null;
+  sku: string;
+  price: number;
+  specLabel: string;
+}
+
+/** Format a variant's spec map into a compact "K1: V1 · K2: V2" label. */
+function variantSpecLabel(specs: Record<string, string>): string {
+  return Object.entries(specs)
+    .filter(([, v]) => v && String(v).trim() !== "")
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(" · ");
+}
+
+function flattenProducts(products: Product[]): SelectableUnit[] {
+  const out: SelectableUnit[] = [];
+  for (const p of products) {
+    const activeVariants = (p.variants || []).filter((v) => v.isActive);
+    if (activeVariants.length === 0) {
+      out.push({
+        product: p,
+        variant: null,
+        sku: p.modelNumber,
+        price: p.price ? parseFloat(p.price) : 0,
+        specLabel: "",
+      });
+    } else {
+      for (const v of activeVariants) {
+        out.push({
+          product: p,
+          variant: v,
+          sku: v.sku,
+          price: v.price ? parseFloat(v.price) : p.price ? parseFloat(p.price) : 0,
+          specLabel: variantSpecLabel(v.specs || {}),
+        });
+      }
+    }
+  }
+  return out;
 }
 
 export default function NewQuotePage() {
@@ -100,14 +155,27 @@ function NewQuoteContent() {
             }));
             if (data.products?.length) {
               setItems(
-                data.products.map((p: { product: Product; quantity?: number }) => ({
-                  productId: p.product.id,
-                  productName: pName(p.product as unknown as Product),
-                  productModel: p.product.modelNumber,
-                  specification: "",
-                  quantity: p.quantity || 1,
-                  unitPrice: p.product.price ? parseFloat(p.product.price) : 0,
-                }))
+                data.products.map(
+                  (p: {
+                    product: Product;
+                    variant: ProductVariant | null;
+                    quantity?: number;
+                    expectedPrice?: string | null;
+                  }) => {
+                    const v = p.variant;
+                    const specLabel = v ? variantSpecLabel(v.specs || {}) : "";
+                    const price = v?.price ? parseFloat(v.price) : p.product.price ? parseFloat(p.product.price) : 0;
+                    return {
+                      productId: p.product.id,
+                      variantId: v?.id ?? null,
+                      productName: pName(p.product as unknown as Product),
+                      productModel: v?.sku || p.product.modelNumber,
+                      specification: specLabel,
+                      quantity: p.quantity || 1,
+                      unitPrice: p.expectedPrice ? parseFloat(p.expectedPrice) : price,
+                    };
+                  },
+                )
               );
             }
           }
@@ -126,20 +194,24 @@ function NewQuoteContent() {
     if (productDialogOpen) searchProducts();
   }, [productDialogOpen]);
 
-  const addProduct = (product: Product) => {
-    if (items.find((i) => i.productId === product.id)) {
-      toast.error("该产品已添加");
+  const addUnit = (unit: SelectableUnit) => {
+    const dup = items.find(
+      (i) => i.productId === unit.product.id && (i.variantId ?? null) === (unit.variant?.id ?? null),
+    );
+    if (dup) {
+      toast.error("该项已添加");
       return;
     }
     setItems([
       ...items,
       {
-        productId: product.id,
-        productName: pName(product),
-        productModel: product.modelNumber,
-        specification: "",
+        productId: unit.product.id,
+        variantId: unit.variant?.id ?? null,
+        productName: pName(unit.product),
+        productModel: unit.sku,
+        specification: unit.specLabel,
         quantity: 1,
-        unitPrice: product.price ? parseFloat(product.price) : 0,
+        unitPrice: unit.price,
       },
     ]);
     setProductDialogOpen(false);
@@ -250,7 +322,7 @@ function NewQuoteContent() {
                 点击"添加产品"选择要报价的产品
               </p>
             ) : (
-              <Table>
+              <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
                     <TableHead>产品</TableHead>
@@ -263,9 +335,9 @@ function NewQuoteContent() {
                 <TableBody>
                   {items.map((item, index) => (
                     <TableRow key={index}>
-                      <TableCell>
-                        <p className="font-medium text-sm">{item.productName}</p>
-                        <p className="text-xs text-slate-500">{item.productModel}</p>
+                      <TableCell className="align-top">
+                        <p className="font-medium text-sm break-words">{item.productName}</p>
+                        <p className="text-xs text-slate-500 break-all">{item.productModel}</p>
                       </TableCell>
                       <TableCell>
                         <Input
@@ -410,20 +482,26 @@ function NewQuoteContent() {
             />
           </div>
           <div className="max-h-80 overflow-y-auto space-y-2">
-            {products.map((product) => (
-              <button
-                key={product.id}
-                type="button"
-                onClick={() => addProduct(product)}
-                className="w-full text-left p-3 rounded-lg border hover:border-amber-500/50 hover:bg-amber-50/50 transition-colors"
-              >
-                <p className="font-medium text-sm">{pName(product)}</p>
-                <p className="text-xs text-slate-500">
-                  {product.modelNumber}{cName(product.category) ? ` · ${cName(product.category)}` : ""}
-                  {product.price && ` · ¥${parseFloat(product.price).toFixed(2)}`}
-                </p>
-              </button>
-            ))}
+            {flattenProducts(products).map((unit) => {
+              const key = `${unit.product.id}:${unit.variant?.id ?? "_"}`;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => addUnit(unit)}
+                  className="w-full text-left p-3 rounded-lg border hover:border-amber-500/50 hover:bg-amber-50/50 transition-colors"
+                >
+                  <p className="font-medium text-sm">
+                    {pName(unit.product)}
+                    {unit.specLabel && <span className="ml-1.5 text-slate-500 font-normal">（{unit.specLabel}）</span>}
+                  </p>
+                  <p className="text-xs text-slate-500 break-all">
+                    {unit.sku}{cName(unit.product.category) ? ` · ${cName(unit.product.category)}` : ""}
+                    {unit.price > 0 && ` · ¥${unit.price.toFixed(2)}`}
+                  </p>
+                </button>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>

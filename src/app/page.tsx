@@ -25,7 +25,7 @@ async function getFeaturedProducts() {
     where: { isActive: true, isFeatured: true },
     include: {
       category: true,
-      images: { orderBy: { sortOrder: "asc" }, take: 1 },
+      images: { where: { variantId: null }, orderBy: { sortOrder: "asc" }, take: 1 },
     },
     take: 8,
     orderBy: { createdAt: "desc" },
