@@ -117,7 +117,6 @@ export async function GET(
     const vSpecs = (v.specs as Record<string, string>) || {};
     return {
       sku: v.sku,
-      price: v.price != null ? `¥${Number(v.price).toFixed(2)}` : null,
       cells: variantHeaderKeys.map((k) => {
         const merged = vSpecs[k] ?? (productSpecs[k] as string | undefined);
         return formatSpecValue(merged, attrByKey.get(k)?.unit || null);

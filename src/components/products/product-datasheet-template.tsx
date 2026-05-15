@@ -46,7 +46,6 @@ const I18N = {
     shipping: "包装运输",
     variants: "产品变体",
     sku: "SKU",
-    price: "参考价",
     certs: "认证",
     description: "产品描述",
     generated: "本文档由系统自动生成",
@@ -62,7 +61,6 @@ const I18N = {
     shipping: "Packing & Shipping",
     variants: "Variants",
     sku: "SKU",
-    price: "Reference Price",
     certs: "Certifications",
     description: "Description",
     generated: "Auto-generated document",
@@ -233,7 +231,6 @@ export interface DatasheetSpec {
 
 export interface DatasheetVariantRow {
   sku: string;
-  price: string | null;
   cells: string[]; // ordered by `variantHeaders`
 }
 
@@ -274,12 +271,10 @@ export function ProductDatasheetDocument({ data }: { data: DatasheetData }) {
   ensureFontsRegistered();
   const t = I18N[data.lang];
 
-  // Variant table column widths: SKU + (optional price) + N spec columns
-  const hasPriceCol = data.variants.some((v) => v.price);
+  // Variant table column widths: SKU + N spec columns
   const specColCount = data.variantHeaders.length;
   const skuColPct = 22;
-  const priceColPct = hasPriceCol ? 16 : 0;
-  const specColPct = (100 - skuColPct - priceColPct) / Math.max(1, specColCount);
+  const specColPct = (100 - skuColPct) / Math.max(1, specColCount);
 
   return (
     <Document>
@@ -347,9 +342,6 @@ export function ProductDatasheetDocument({ data }: { data: DatasheetData }) {
             <View>
               <View style={styles.varTableHeader}>
                 <Text style={[styles.varHeaderCell, { width: `${skuColPct}%` }]}>{t.sku}</Text>
-                {hasPriceCol && (
-                  <Text style={[styles.varHeaderCell, { width: `${priceColPct}%` }]}>{t.price}</Text>
-                )}
                 {data.variantHeaders.map((h, i) => (
                   <Text key={`${h}-${i}`} style={[styles.varHeaderCell, { width: `${specColPct}%` }]}>
                     {h}
@@ -365,9 +357,6 @@ export function ProductDatasheetDocument({ data }: { data: DatasheetData }) {
                   <Text style={[styles.varCell, { width: `${skuColPct}%`, fontFamily: "NotoSansSC", fontWeight: "bold" }]}>
                     {v.sku}
                   </Text>
-                  {hasPriceCol && (
-                    <Text style={[styles.varCell, { width: `${priceColPct}%` }]}>{v.price || "—"}</Text>
-                  )}
                   {v.cells.map((c, ci) => (
                     <Text key={`${ci}-${c}`} style={[styles.varCell, { width: `${specColPct}%` }]}>
                       {c || "—"}
