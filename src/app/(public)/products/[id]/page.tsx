@@ -220,7 +220,7 @@ export default function ProductDetailPage() {
                   <button key={img.id} onClick={() => setSelectedImg(i)}
                     className={cn("w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
                       i === selectedImg ? "border-blue-600" : "border-gray-100 hover:border-gray-300")}>
-                    <Image src={img.url} alt="" width={64} height={64} className="w-full h-full object-cover" unoptimized />
+                    <Image src={img.url} alt="" width={64} height={64} className="w-full h-full object-contain" unoptimized />
                   </button>
                 ))}
               </div>

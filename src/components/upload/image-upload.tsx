@@ -82,7 +82,7 @@ export function ImageUpload({
                 src={img.url}
                 alt={img.fileName}
                 fill
-                className="object-cover"
+                className="object-contain"
                 unoptimized
               />
               <button
