@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DOC_TYPE_LABELS } from "@/lib/constants";
+import { DOC_TYPE_LABELS, SHIPPING_SPEC_KEYS } from "@/lib/constants";
 import { addToCart } from "@/lib/inquiry-cart";
 import { toast } from "sonner";
 import {
@@ -32,6 +32,9 @@ interface ProductDetail {
 function getName(c: unknown) { const v = c as ContentJson | null; return v?.zh?.name || v?.en?.name || ""; }
 function getDesc(c: unknown) { const v = c as ContentJson | null; return v?.zh?.description || v?.en?.description || ""; }
 function fmtSize(b: number) { return b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`; }
+
+/** Internal logistics keys — kept off the public product page (used only in the packing list / datasheet). */
+const SHIPPING_KEYS = new Set<string>(SHIPPING_SPEC_KEYS);
 
 /** Format a spec value: arrays joined with " / " */
 function fmtSpecVal(val: string | string[], unit?: string): string {
@@ -70,7 +73,9 @@ export default function ProductDetailPage() {
   const variantDimensions = useMemo(() => {
     if (activeVariants.length === 0) return [];
     const allKeys = new Set<string>();
-    activeVariants.forEach((v) => Object.keys(v.specs || {}).forEach((k) => allKeys.add(k)));
+    activeVariants.forEach((v) =>
+      Object.keys(v.specs || {}).forEach((k) => { if (!SHIPPING_KEYS.has(k)) allKeys.add(k); })
+    );
 
     return Array.from(allKeys)
       .map((key) => {
@@ -146,6 +151,7 @@ export default function ProductDetailPage() {
     return Object.entries(merged)
       .filter(([k, v]) => v && (typeof v === "string" ? v.trim() !== "" : v.length > 0))
       .filter(([k]) => !dimKeys.has(k)) // hide variant dimension keys (already shown in selector)
+      .filter(([k]) => !SHIPPING_KEYS.has(k)) // hide internal shipping/packing data
       .map(([key, val]) => {
         const def = attrs.find((a) => a.key === key);
         const label = def ? (def.name.zh || def.name.en || key) : key;
@@ -163,7 +169,10 @@ export default function ProductDetailPage() {
 
   // Variant label for cart
   const variantLabel = currentVariant
-    ? Object.entries(currentVariant.specs).map(([k, v]) => `${getAttrLabel(k)}: ${v}`).join(", ")
+    ? Object.entries(currentVariant.specs)
+        .filter(([k]) => !SHIPPING_KEYS.has(k))
+        .map(([k, v]) => `${getAttrLabel(k)}: ${v}`)
+        .join(", ")
     : "";
 
   return (

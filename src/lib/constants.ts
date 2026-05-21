@@ -59,6 +59,20 @@ export const QUOTE_STATUS_LABELS: Record<string, string> = {
   EXPIRED: "已过期",
 };
 
+/**
+ * Shipping / packing parameter keys. These live alongside regular specs but are
+ * internal logistics data — they feed the packing list & the datasheet packaging
+ * section, and must NOT be shown on the public product page.
+ */
+export const SHIPPING_SPEC_KEYS = [
+  "qty_per_carton",
+  "carton_length",
+  "carton_width",
+  "carton_height",
+  "net_weight",
+  "gross_weight",
+] as const;
+
 export const LED_SPEC_LABELS: Record<string, string> = {
   wattage: "功率",
   colorTemperature: "色温",
