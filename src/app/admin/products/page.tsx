@@ -62,6 +62,7 @@ export default function ProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [jumpValue, setJumpValue] = useState("");
 
   const fetchProducts = useCallback(() => {
     const params = new URLSearchParams({
@@ -107,6 +108,16 @@ export default function ProductsPage() {
   const handleSearch = (value: string) => {
     setSearch(value);
     setPage(1);
+  };
+
+  const handleJump = () => {
+    const target = Number(jumpValue);
+    if (!Number.isInteger(target) || target < 1 || target > totalPages) {
+      toast.error(`请输入 1 - ${totalPages} 之间的页码`);
+      return;
+    }
+    setPage(target);
+    setJumpValue("");
   };
 
   return (
@@ -255,7 +266,23 @@ export default function ProductsPage() {
               <p className="text-sm text-slate-500">
                 第 {page} / {totalPages} 页，共 {total} 条
               </p>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 text-sm text-slate-500">
+                  <span>跳至</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={jumpValue}
+                    onChange={(e) => setJumpValue(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleJump()}
+                    className="w-16 h-8 text-center"
+                  />
+                  <span>页</span>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleJump}>
+                  确定
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
