@@ -1,84 +1,87 @@
 import Link from "next/link";
-import { Mail, Phone, MapPin } from "lucide-react";
+
+const footerCols: { title: string; links: { label: string; href: string }[] }[] = [
+  {
+    title: "购物",
+    links: [
+      { label: "全部产品", href: "/products" },
+      { label: "面板灯", href: "/products?category=panel" },
+      { label: "筒灯 / 射灯", href: "/products?category=downlight" },
+      { label: "在线询价", href: "/inquiry" },
+    ],
+  },
+  {
+    title: "公司",
+    links: [
+      { label: "关于我们", href: "/about" },
+      { label: "认证资质", href: "/about" },
+      { label: "工厂展示", href: "/about" },
+      { label: "联系我们", href: "/inquiry" },
+    ],
+  },
+  {
+    title: "支持",
+    links: [
+      { label: "产品资料", href: "/products" },
+      { label: "技术参数", href: "/products" },
+      { label: "保修政策", href: "/inquiry" },
+      { label: "OEM/ODM", href: "/inquiry" },
+    ],
+  },
+];
+
+const certs = ["CE", "UL", "RoHS", "SAA", "DLC", "ISO 9001"];
 
 export function PublicFooter() {
   return (
-    <footer className="bg-neutral-900 text-neutral-400">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
-          {/* Brand */}
-          <div>
-            <div className="mb-4 text-lg font-semibold tracking-tight text-white">
-              欧星照明
-            </div>
-            <p className="text-sm text-neutral-500 leading-relaxed">
-              专业LED照明产品制造商，提供面板灯、筒灯、射灯等全系列LED产品。
+    <footer className="bg-[#f5f5f7] text-[#6e6e73] text-[12px] leading-[1.5]">
+      <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pb-8 border-b border-black/10">
+          <div className="col-span-2 md:col-span-1">
+            <p className="text-[#1d1d1f] font-semibold text-[13px] mb-3">欧星照明</p>
+            <p className="text-[12px] leading-relaxed max-w-xs">
+              专业 LED 照明产品制造商，远销 50+ 国家。
+            </p>
+            <p className="mt-4 text-[12px]">
+              <a href="mailto:info@ouxing.com" className="hover:underline underline-offset-4">info@ouxing.com</a>
+            </p>
+            <p className="text-[12px]">
+              <a href="tel:+8675512345678" className="hover:underline underline-offset-4">+86 755 1234 5678</a>
             </p>
           </div>
 
-          {/* Quick Links */}
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-4">
-              快速导航
-            </h4>
-            <ul className="space-y-2.5">
-              {[
-                { href: "/products", label: "产品中心" },
-                { href: "/about", label: "关于我们" },
-                { href: "/inquiry", label: "在线询价" },
-              ].map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-neutral-500 hover:text-white transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Product Lines */}
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-4">
-              产品系列
-            </h4>
-            <ul className="space-y-2.5 text-sm text-neutral-500">
-              <li>面板灯 / 筒灯</li>
-              <li>射灯 / 灯管</li>
-              <li>灯带 / 工矿灯</li>
-              <li>投光灯 / 路灯</li>
-            </ul>
-          </div>
-
-          {/* Contact */}
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-widest text-neutral-500 mb-4">
-              联系我们
-            </h4>
-            <ul className="space-y-3">
-              {[
-                { icon: Mail, text: "info@ouxing.com" },
-                { icon: Phone, text: "+86 755-1234-5678" },
-                { icon: MapPin, text: "广东省深圳市宝安区" },
-              ].map((item) => (
-                <li
-                  key={item.text}
-                  className="flex items-center gap-2.5 text-sm text-neutral-500"
-                >
-                  <div className="w-8 h-8 border border-neutral-700 rounded-lg flex items-center justify-center shrink-0">
-                    <item.icon className="w-3.5 h-3.5" />
-                  </div>
-                  {item.text}
-                </li>
-              ))}
-            </ul>
-          </div>
+          {footerCols.map((col) => (
+            <div key={col.title}>
+              <p className="text-[#1d1d1f] font-semibold text-[13px] mb-3">{col.title}</p>
+              <ul className="space-y-2">
+                {col.links.map((l) => (
+                  <li key={l.label + l.href}>
+                    <Link
+                      href={l.href}
+                      className="hover:underline underline-offset-4 transition-colors"
+                    >
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
-        <div className="mt-12 pt-6 border-t border-neutral-800 text-xs text-neutral-600 text-center">
-          &copy; {new Date().getFullYear()} 欧星. All rights reserved.
+        <div className="pt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-wrap text-[11px]">
+            <span className="text-[#86868b]">国际认证</span>
+            {certs.map((c, i) => (
+              <span key={c} className="flex items-center gap-3">
+                <span>{c}</span>
+                {i < certs.length - 1 && <span className="text-[#d2d2d7]">·</span>}
+              </span>
+            ))}
+          </div>
+          <p className="text-[11px] text-[#86868b]">
+            © {new Date().getFullYear()} 欧星照明. 保留所有权利.
+          </p>
         </div>
       </div>
     </footer>

@@ -5,11 +5,9 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
-  Search, Package, ChevronLeft, ChevronRight, Grid3X3, List, Eye,
-  Image as ImageIcon, SlidersHorizontal, X, ClipboardList,
+  Search, Package, ChevronLeft, ChevronRight, Image as ImageIcon, X, SlidersHorizontal, ClipboardList, Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { addToCart } from "@/lib/inquiry-cart";
@@ -46,12 +44,11 @@ function Content() {
   const [totalPages, setTotalPages] = useState(1);
   const [facets, setFacets] = useState<Facet[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const currentCategory = searchParams.get("category") || "";
   const currentSearch = searchParams.get("search") || "";
 
-  // Collect active spec filters from URL
   const activeSpecFilters: Record<string, string> = {};
   searchParams.forEach((value, key) => {
     if (key.startsWith("spec.")) activeSpecFilters[key] = value;
@@ -64,7 +61,6 @@ function Content() {
       ...(currentSearch && { search: currentSearch }),
       ...(currentCategory && { category: currentCategory }),
     });
-    // Add spec filters to API call
     Object.entries(activeSpecFilters).forEach(([k, v]) => params.set(k, v));
 
     fetch(`/api/products?${params}`)
@@ -75,13 +71,11 @@ function Content() {
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  // Load categories, attributes, facets
   useEffect(() => {
     fetch("/api/categories").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setCategories(d); });
     fetch("/api/attributes").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setAttrs(d); }).catch(() => {});
   }, []);
 
-  // Load facets (re-fetch when category changes)
   useEffect(() => {
     const fp = new URLSearchParams();
     if (currentCategory) fp.set("category", currentCategory);
@@ -104,166 +98,174 @@ function Content() {
     ? getName(categories.find((c) => c.id === currentCategory)?.content)
     : "";
 
-  return (
-    <div className="bg-white min-h-screen">
-      {/* Header */}
-      <div className="bg-gray-50 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {/* Breadcrumb */}
-          <div className="text-sm text-gray-400 mb-2 flex items-center gap-1.5">
-            <Link href="/" className="hover:text-blue-600">首页</Link>
-            <span>/</span>
-            <span className={currentCategory ? "text-gray-400" : "text-gray-700"}>产品中心</span>
-            {currentCatName && <><span>/</span><span className="text-gray-700">{currentCatName}</span></>}
-          </div>
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">{currentCatName || "产品中心"}</h1>
-            <span className="text-sm text-gray-400">{total} 个产品</span>
-          </div>
+  const FilterContent = () => (
+    <div className="space-y-8">
+      <div>
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#86868b] mb-4">分类</h3>
+        <div className="space-y-1">
+          <FilterRow
+            label="全部产品"
+            active={!currentCategory}
+            count={total}
+            onClick={() => updateParams("category", "")}
+          />
+          {categories.map((cat) => (
+            <FilterRow
+              key={cat.id}
+              label={getName(cat.content)}
+              active={currentCategory === cat.id}
+              count={cat._count.products}
+              onClick={() => updateParams("category", cat.id)}
+            />
+          ))}
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* ── Sidebar Filter ── */}
-          <aside className="lg:w-60 shrink-0 space-y-6">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="搜索产品..."
-                defaultValue={currentSearch}
-                onKeyDown={(e) => { if (e.key === "Enter") updateParams("search", (e.target as HTMLInputElement).value); }}
-                className="pl-9 bg-gray-50 border-gray-200 focus:border-blue-300 h-10"
-              />
+      {facets.map((facet) => {
+        const activeVal = activeSpecFilters[`spec.${facet.key}`] || "";
+        const label = facet.name.zh || facet.name.en || facet.key;
+        return (
+          <div key={facet.key}>
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#86868b] mb-4">
+              {label}{facet.unit ? ` (${facet.unit})` : ""}
+            </h3>
+            <div className="space-y-1">
+              {facet.values.map((opt) => {
+                const isActive = activeVal === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => updateParams(`spec.${facet.key}`, isActive ? "" : opt.value)}
+                    className="group w-full flex items-center gap-3 py-1.5 text-left text-[14px] text-[#1d1d1f]"
+                  >
+                    <span className={cn(
+                      "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all",
+                      isActive ? "bg-[#1d1d1f] border-[#1d1d1f]" : "border-[#d2d2d7] group-hover:border-[#86868b]",
+                    )}>
+                      {isActive && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                    </span>
+                    {opt.color && (
+                      <span className="w-3 h-3 rounded-full border border-[#d2d2d7]" style={{ backgroundColor: opt.color }} />
+                    )}
+                    <span className="flex-1">{opt.value}</span>
+                  </button>
+                );
+              })}
             </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 
-            {/* Active filters */}
-            {(currentSearch || currentCategory || Object.keys(activeSpecFilters).length > 0) && (
+  return (
+    <div className="bg-white min-h-screen text-[#1d1d1f]">
+      {/* Hero / page header — Apple Store style */}
+      <section className="text-center pt-16 md:pt-20 pb-10 md:pb-14">
+        <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-base text-[#86868b] mb-3">
+            {currentCatName ? "产品分类" : "全部产品"}
+          </p>
+          <h1 className="headline-xl text-5xl md:text-7xl mb-4">
+            {currentCatName || "全部产品"}
+          </h1>
+          <p className="text-xl md:text-2xl text-[#86868b] tracking-tight">
+            {total} 款产品 · 工厂直供
+          </p>
+        </div>
+      </section>
+
+      {/* Search — minimal Apple search bar */}
+      <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8 mb-8">
+        <div className="relative max-w-md mx-auto">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868b]" strokeWidth={2} />
+          <Input
+            placeholder="搜索产品型号、名称…"
+            defaultValue={currentSearch}
+            onKeyDown={(e) => { if (e.key === "Enter") updateParams("search", (e.target as HTMLInputElement).value); }}
+            className="pl-11 h-11 bg-[#f5f5f7] border-0 rounded-full focus-visible:ring-2 focus-visible:ring-[#1d1d1f]/15"
+          />
+        </div>
+      </div>
+
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+        <div className="flex flex-col lg:flex-row gap-10">
+          {/* Sidebar (desktop) */}
+          <aside className="hidden lg:block w-56 shrink-0">
+            <div className="sticky top-20">
+              <FilterContent />
+            </div>
+          </aside>
+
+          {/* Mobile filter drawer */}
+          {filterOpen && (
+            <div className="lg:hidden fixed inset-0 z-50 bg-black/40" onClick={() => setFilterOpen(false)}>
+              <div
+                className="absolute left-0 top-0 bottom-0 w-80 max-w-[85vw] bg-white shadow-xl overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="sticky top-0 bg-white border-b border-[#d2d2d7] px-5 py-4 flex items-center justify-between">
+                  <h2 className="text-base font-semibold">筛选</h2>
+                  <button onClick={() => setFilterOpen(false)} className="p-1.5 text-[#86868b]">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="p-5">
+                  <FilterContent />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex-1 min-w-0">
+            {/* Toolbar */}
+            <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
+              <button
+                onClick={() => setFilterOpen(true)}
+                className="lg:hidden inline-flex items-center gap-1.5 px-4 h-9 bg-[#f5f5f7] rounded-full text-sm text-[#1d1d1f]"
+              >
+                <SlidersHorizontal className="w-4 h-4" /> 筛选
+                {Object.keys(activeSpecFilters).length > 0 && (
+                  <span className="ml-1 min-w-[18px] h-[18px] bg-[#1d1d1f] text-white text-[10px] rounded-full flex items-center justify-center px-1">
+                    {Object.keys(activeSpecFilters).length}
+                  </span>
+                )}
+              </button>
+
               <div className="flex flex-wrap gap-2">
                 {currentSearch && (
-                  <button onClick={() => updateParams("search", "")} className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-600 text-xs rounded-lg">
-                    &ldquo;{currentSearch}&rdquo; <X className="w-3 h-3" />
-                  </button>
-                )}
-                {currentCatName && (
-                  <button onClick={() => updateParams("category", "")} className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-600 text-xs rounded-lg">
-                    {currentCatName} <X className="w-3 h-3" />
-                  </button>
+                  <Chip onRemove={() => updateParams("search", "")}>“{currentSearch}”</Chip>
                 )}
                 {Object.entries(activeSpecFilters).map(([key, val]) => {
                   const attrKey = key.slice(5);
                   const facet = facets.find((f) => f.key === attrKey);
                   const label = facet ? (facet.name.zh || facet.name.en || attrKey) : attrKey;
                   return (
-                    <button key={key} onClick={() => updateParams(key, "")} className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-600 text-xs rounded-lg">
-                      {label}: {val} <X className="w-3 h-3" />
-                    </button>
+                    <Chip key={key} onRemove={() => updateParams(key, "")}>{label}: {val}</Chip>
                   );
                 })}
-                {(Object.keys(activeSpecFilters).length > 0 || currentSearch || currentCategory) && (
+                {(currentSearch || Object.keys(activeSpecFilters).length > 0) && (
                   <button
-                    onClick={() => {
-                      router.push("/products");
-                      setPage(1);
-                    }}
-                    className="text-xs text-gray-400 hover:text-red-500 underline underline-offset-2"
+                    onClick={() => { router.push(currentCategory ? `/products?category=${currentCategory}` : "/products"); setPage(1); }}
+                    className="text-xs text-[#1d1d1f] hover:underline underline-offset-4 px-2 py-1"
                   >
                     清除全部
                   </button>
                 )}
               </div>
-            )}
 
-            {/* Categories filter */}
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3 flex items-center gap-1.5">
-                <SlidersHorizontal className="w-3.5 h-3.5" /> 产品分类
-              </h3>
-              <div className="space-y-0.5">
-                <button
-                  onClick={() => updateParams("category", "")}
-                  className={cn("w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
-                    !currentCategory ? "text-blue-600 bg-blue-50 font-medium" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-                  )}
-                >
-                  全部产品
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => updateParams("category", cat.id)}
-                    className={cn("w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex justify-between",
-                      currentCategory === cat.id ? "text-blue-600 bg-blue-50 font-medium" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-                    )}
-                  >
-                    {getName(cat.content)}
-                    <span className="text-gray-300 text-xs tabular-nums">{cat._count.products}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Attribute facet filters */}
-            {facets.map((facet) => {
-              const activeVal = activeSpecFilters[`spec.${facet.key}`] || "";
-              const label = facet.name.zh || facet.name.en || facet.key;
-              return (
-                <div key={facet.key}>
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">
-                    {label}{facet.unit ? ` (${facet.unit})` : ""}
-                  </h3>
-                  <div className="space-y-0.5">
-                    {facet.values.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => updateParams(`spec.${facet.key}`, activeVal === opt.value ? "" : opt.value)}
-                        className={cn(
-                          "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2",
-                          activeVal === opt.value
-                            ? "text-blue-600 bg-blue-50 font-medium"
-                            : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-                        )}
-                      >
-                        {opt.color && (
-                          <span className="w-3 h-3 rounded-full border border-gray-200 shrink-0" style={{ backgroundColor: opt.color }} />
-                        )}
-                        {opt.value}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </aside>
-
-          {/* ── Product Grid ── */}
-          <div className="flex-1">
-            {/* Toolbar */}
-            <div className="flex items-center justify-between mb-5">
-              <div />
-              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
-                <button onClick={() => setViewMode("grid")} className={cn("p-1.5 rounded-md transition-colors", viewMode === "grid" ? "bg-white shadow-sm text-gray-900" : "text-gray-400")}>
-                  <Grid3X3 className="w-4 h-4" />
-                </button>
-                <button onClick={() => setViewMode("list")} className={cn("p-1.5 rounded-md transition-colors", viewMode === "list" ? "bg-white shadow-sm text-gray-900" : "text-gray-400")}>
-                  <List className="w-4 h-4" />
-                </button>
+              <div className="text-sm text-[#86868b] ml-auto">
+                第 <span className="text-[#1d1d1f] font-medium">{page}</span> / {totalPages} 页
               </div>
             </div>
 
             {loading ? (
-              <div className={cn("grid gap-5", viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1")}>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                    <div className={viewMode === "list" ? "flex" : ""}>
-                      <div className={cn("bg-gray-100 animate-pulse", viewMode === "list" ? "w-1/3 h-48" : "h-56")} />
-                      <div className="p-5 flex-1 space-y-3">
-                        <div className="h-3 bg-gray-100 rounded w-20 animate-pulse" />
-                        <div className="h-4 bg-gray-100 rounded w-3/4 animate-pulse" />
-                        <div className="h-3 bg-gray-100 rounded w-1/2 animate-pulse" />
-                      </div>
-                    </div>
+                  <div key={i}>
+                    <div className="aspect-square bg-[#f5f5f7] rounded-3xl animate-pulse" />
+                    <div className="h-3 bg-[#f5f5f7] rounded mt-5 w-1/3 animate-pulse mx-auto" />
+                    <div className="h-4 bg-[#f5f5f7] rounded mt-2 w-3/4 animate-pulse mx-auto" />
                   </div>
                 ))}
               </div>
@@ -271,29 +273,18 @@ function Content() {
               <EmptyState icon={Package} title="暂无产品" description="没有找到符合条件的产品" />
             ) : (
               <>
-                <div className={cn("grid gap-5",
-                  viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"
-                )}>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12 md:gap-y-16">
                   {products.map((product) => (
                     <ProductCard
                       key={product.id}
                       product={product}
-                      viewMode={viewMode}
                       highlightAttrs={highlightAttrs}
                     />
                   ))}
                 </div>
 
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-3 mt-12 pt-6 border-t border-gray-100">
-                    <Button variant="outline" size="sm" onClick={() => setPage(page - 1)} disabled={page <= 1}>
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <span className="text-sm text-gray-400 tabular-nums">{page} / {totalPages}</span>
-                    <Button variant="outline" size="sm" onClick={() => setPage(page + 1)} disabled={page >= totalPages}>
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  <Pagination page={page} totalPages={totalPages} onChange={setPage} />
                 )}
               </>
             )}
@@ -304,14 +295,86 @@ function Content() {
   );
 }
 
-/* ── Product Card (照搬 my-led-erp 结构) ── */
+function FilterRow({ label, active, count, onClick }: { label: string; active: boolean; count: number; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-full text-left py-1.5 text-[14px] flex items-center justify-between transition-colors",
+        active ? "text-[#1d1d1f] font-semibold" : "text-[#1d1d1f] opacity-70 hover:opacity-100",
+      )}
+    >
+      <span>{label}</span>
+      <span className={cn("text-xs tabular-nums", active ? "text-[#86868b]" : "text-[#86868b]")}>
+        {count}
+      </span>
+    </button>
+  );
+}
+
+function Chip({ children, onRemove }: { children: React.ReactNode; onRemove: () => void }) {
+  return (
+    <button
+      onClick={onRemove}
+      className="inline-flex items-center gap-1 px-3 py-1 bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f] text-xs rounded-full transition-colors"
+    >
+      {children} <X className="w-3 h-3" />
+    </button>
+  );
+}
+
+function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
+  const pages: (number | "…")[] = [];
+  const add = (n: number) => { if (!pages.includes(n) && n >= 1 && n <= totalPages) pages.push(n); };
+  add(1);
+  if (page - 1 > 2) pages.push("…");
+  for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) add(i);
+  if (page + 1 < totalPages - 1) pages.push("…");
+  add(totalPages);
+
+  return (
+    <div className="flex items-center justify-center gap-1 mt-20 pt-10 border-t border-[#d2d2d7]/60">
+      <button
+        onClick={() => onChange(page - 1)}
+        disabled={page <= 1}
+        className="inline-flex items-center gap-1 px-4 h-9 rounded-full text-sm text-[#1d1d1f] hover:bg-[#f5f5f7] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+      >
+        <ChevronLeft className="w-4 h-4" /> 上一页
+      </button>
+      <div className="flex items-center gap-1 mx-3">
+        {pages.map((p, i) =>
+          p === "…" ? (
+            <span key={`e-${i}`} className="px-2 text-[#86868b] text-sm">…</span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onChange(p)}
+              className={cn(
+                "w-9 h-9 rounded-full text-sm font-medium tabular-nums transition-colors",
+                p === page ? "bg-[#1d1d1f] text-white" : "text-[#1d1d1f] hover:bg-[#f5f5f7]",
+              )}
+            >
+              {p}
+            </button>
+          ),
+        )}
+      </div>
+      <button
+        onClick={() => onChange(page + 1)}
+        disabled={page >= totalPages}
+        className="inline-flex items-center gap-1 px-4 h-9 rounded-full text-sm text-[#1d1d1f] hover:bg-[#f5f5f7] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+      >
+        下一页 <ChevronRight className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
 function ProductCard({
   product,
-  viewMode,
   highlightAttrs,
 }: {
   product: Product;
-  viewMode: "grid" | "list";
   highlightAttrs: AttrDef[];
 }) {
   const name = getName(product.content);
@@ -319,7 +382,6 @@ function ProductCard({
   const imageUrl = product.images[0]?.url;
   const specs = product.specs || {};
 
-  // Build highlight specs from attribute definitions
   const highlightSpecs = highlightAttrs
     .map((attr) => {
       const raw = specs[attr.key];
@@ -334,85 +396,49 @@ function ProductCard({
   return (
     <Link
       href={`/products/${product.id}`}
-      className={cn(
-        "group bg-white border border-gray-100 rounded-xl overflow-hidden hover:border-blue-200 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300 flex",
-        viewMode === "list" ? "flex-row min-h-[14rem]" : "flex-col"
-      )}
+      className="group block text-center"
     >
-      {/* Image */}
-      <div className={cn(
-        "relative bg-gray-50 flex items-center justify-center overflow-hidden",
-        viewMode === "list" ? "w-1/3" : "h-56"
-      )}>
+      <div className="relative aspect-square bg-[#f5f5f7] rounded-3xl overflow-hidden mb-5">
         {imageUrl ? (
           <Image
             src={imageUrl}
             alt={name}
             fill
-            className="object-contain p-3 group-hover:scale-105 transition-transform duration-500"
+            className="object-contain p-8 transition-transform duration-700 group-hover:scale-105"
             unoptimized
           />
         ) : (
-          <div className="flex flex-col items-center text-gray-300">
-            <ImageIcon className="w-8 h-8" />
-            <span className="text-[10px] uppercase font-mono mt-1">NO IMAGE</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-[#86868b]">
+            <ImageIcon className="w-10 h-10" />
+            <span className="text-[10px] uppercase mt-1">无图</span>
           </div>
         )}
 
-        {/* Quick actions (slide up on hover, like my-led-erp) */}
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 translate-y-12 group-hover:translate-y-0 transition-transform duration-300 z-10">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              addToCart({ productId: product.id, variantId: null, name, modelNumber: product.modelNumber, imageUrl: imageUrl });
-              toast.success("已加入询价单");
-            }}
-            className="p-2.5 bg-white rounded-full shadow-lg text-gray-400 hover:text-blue-600 transition-colors"
-            title="加入询价单"
-          >
-            <ClipboardList className="w-4 h-4" />
-          </button>
-          <span className="p-2.5 bg-white rounded-full shadow-lg text-gray-400 hover:text-blue-600 transition-colors">
-            <Eye className="w-4 h-4" />
-          </span>
-        </div>
+        {/* Hover quick-add button */}
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            addToCart({ productId: product.id, variantId: null, name, modelNumber: product.modelNumber, imageUrl });
+            toast.success("已加入询价单");
+          }}
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-4 h-9 bg-[#1d1d1f] text-white text-xs font-medium rounded-full shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300"
+        >
+          <ClipboardList className="w-3.5 h-3.5" /> 加入询价
+        </button>
       </div>
 
-      {/* Content */}
-      <div className="p-5 flex-1 flex flex-col min-w-0">
-        <span
-          className="text-[11px] font-medium text-gray-400 uppercase tracking-widest block truncate"
-          title={catName || product.modelNumber}
-        >
-          {catName || product.modelNumber}
-        </span>
-
-        <h3 className="text-base font-medium text-gray-900 leading-tight mt-1 mb-3 group-hover:text-blue-600 transition-colors line-clamp-2">
-          {name}
-        </h3>
-
-        {/* Highlight specs grid (my-led-erp style) */}
-        {highlightSpecs.length > 0 && (
-          <div className="grid grid-cols-2 gap-px bg-gray-200 rounded-lg overflow-hidden mt-auto">
-            {highlightSpecs.slice(0, 4).map((spec, i) => (
-              <div
-                key={spec.key}
-                className={cn(
-                  "bg-white px-3 py-2 flex flex-col",
-                  highlightSpecs.length % 2 === 1 && i === highlightSpecs.length - 1 ? "col-span-2" : ""
-                )}
-              >
-                <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider leading-none mb-1">
-                  {spec.label}
-                </span>
-                <span className="text-sm font-bold text-gray-900 leading-tight truncate">
-                  {spec.value}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+      <p className="text-xs text-[#86868b] mb-1.5">{catName || product.modelNumber}</p>
+      <h3 className="headline-lg text-lg md:text-xl text-[#1d1d1f] group-hover:opacity-70 transition-opacity line-clamp-2 px-2">
+        {name}
+      </h3>
+      {highlightSpecs.length > 0 && (
+        <p className="text-sm text-[#86868b] mt-1.5 px-2 line-clamp-1">
+          {highlightSpecs.slice(0, 3).map((s) => s.value).join(" · ")}
+        </p>
+      )}
+      <div className="mt-3">
+        <span className="applink text-sm">了解更多</span>
       </div>
     </Link>
   );

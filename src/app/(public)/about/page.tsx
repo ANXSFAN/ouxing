@@ -1,62 +1,177 @@
-import { Factory, Award, Users, Globe } from "lucide-react";
+import {
+  Factory, Award, Users, Globe, Truck, ShieldCheck, Headphones, Zap,
+} from "lucide-react";
+import { ScrollReveal } from "@/components/motion/scroll-reveal";
+import Link from "next/link";
+import Image from "next/image";
 
 export default function AboutPage() {
   return (
-    <div>
-      <div className="bg-gray-50 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-2xl font-bold text-gray-900">关于我们</h1>
-          <p className="text-sm text-gray-400 mt-1">欧星 - 专业LED照明产品制造商</p>
+    <div className="bg-white text-[#1d1d1f]">
+      {/* ═════════════════ HERO ═════════════════ */}
+      <section className="bg-white pt-16 md:pt-24 pb-16 md:pb-20 text-center">
+        <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal variant="up">
+            <p className="text-base md:text-lg text-[#86868b] mb-3 font-medium">
+              成立于 2015
+            </p>
+          </ScrollReveal>
+          <ScrollReveal variant="up" delay={100}>
+            <h1 className="headline-xl text-5xl sm:text-7xl md:text-[80px] mb-5">
+              关于欧星
+            </h1>
+          </ScrollReveal>
+          <ScrollReveal variant="up" delay={180}>
+            <p className="text-xl sm:text-2xl md:text-[28px] text-[#1d1d1f] font-medium tracking-tight max-w-3xl mx-auto">
+              十年磨一剑<span className="text-[#86868b]">.</span>
+              <br className="md:hidden" />
+              <span className="hidden md:inline"> </span>
+              做经得起时间检验的 LED 产品<span className="text-[#86868b]">.</span>
+            </p>
+          </ScrollReveal>
+          <ScrollReveal variant="up" delay={260}>
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
+              <Link href="/products" className="applink">浏览产品</Link>
+              <Link href="/inquiry" className="applink">联系我们</Link>
+            </div>
+          </ScrollReveal>
         </div>
-      </div>
+      </section>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* 简介 */}
-        <section className="py-12 max-w-2xl">
-          <p className="text-gray-600 leading-relaxed">
-            欧星成立于2015年，是一家专注于LED照明产品研发与制造的企业。公司拥有现代化生产基地，
-            配备全自动SMT贴片线、无尘组装车间和完善的老化测试系统。产品通过CE、UL、RoHS、SAA、DLC等多项国际认证，远销50多个国家和地区。
-          </p>
-        </section>
+      {/* ═════════════════ INTRO with image ═════════════════ */}
+      <section className="bg-white pb-16 md:pb-24">
+        <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal variant="fade">
+            <div className="aspect-[16/9] bg-[#e8e8ed] rounded-3xl overflow-hidden relative">
+              <Image src="/hero.jpg" alt="欧星工厂" fill className="object-cover" unoptimized />
+            </div>
+          </ScrollReveal>
 
-        {/* 数据 */}
-        <section className="py-10 border-y border-gray-100">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <ScrollReveal variant="up" delay={120}>
+            <p className="text-[17px] md:text-[19px] text-[#424245] mt-10 leading-relaxed max-w-3xl">
+              欧星是一家专注于 LED 照明产品研发与制造的企业。公司拥有现代化生产基地，
+              配备全自动 SMT 贴片线、无尘组装车间和完善的老化测试系统。产品通过 CE、UL、RoHS、SAA、DLC 等多项国际认证，
+              远销 50 多个国家和地区。
+            </p>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* ═════════════════ STATS (dark band) ═════════════════ */}
+      <section className="bg-[#1d1d1f] text-white py-20 md:py-24 text-center">
+        <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal variant="up">
+            <p className="text-[#86868b] text-base mb-3">数据说话</p>
+          </ScrollReveal>
+          <ScrollReveal variant="up" delay={80}>
+            <h2 className="headline-xl text-4xl sm:text-6xl md:text-7xl mb-14">
+              十年深耕<span className="text-[#86868b]">.</span>
+            </h2>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-y-12">
             {[
-              { value: "2015年", label: "成立" },
-              { value: "500+", label: "产品型号" },
-              { value: "50+", label: "出口国家" },
-              { value: "200+", label: "团队成员" },
-            ].map((s) => (
-              <div key={s.label} className="text-center">
-                <div className="text-3xl font-bold text-gray-900">{s.value}</div>
-                <div className="text-sm text-gray-400 mt-1">{s.label}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* 能力 */}
-        <section className="py-12">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">核心能力</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[
-              { icon: Factory, title: "自有工厂", desc: "现代化生产基地，全自动SMT产线" },
-              { icon: Award, title: "品质认证", desc: "CE / UL / RoHS / SAA / DLC" },
-              { icon: Users, title: "研发团队", desc: "光学、电子、结构多学科团队" },
-              { icon: Globe, title: "全球网络", desc: "产品远销50+国家和地区" },
-            ].map((item) => (
-              <div key={item.title} className="bg-gray-50 rounded-xl p-5 border border-gray-100">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-3">
-                  <item.icon className="w-5 h-5 text-blue-600" />
+              { v: "2015", l: "成立年份" },
+              { v: "500+", l: "产品 SKU" },
+              { v: "50+", l: "出口国家" },
+              { v: "200+", l: "团队成员" },
+            ].map((s, i) => (
+              <ScrollReveal key={s.l} variant="up" delay={i * 80}>
+                <div>
+                  <div className="headline-xl text-5xl md:text-6xl text-white tabular-nums">{s.v}</div>
+                  <p className="text-sm text-[#86868b] mt-2">{s.l}</p>
                 </div>
-                <h3 className="font-semibold text-gray-900 text-sm mb-1">{item.title}</h3>
-                <p className="text-xs text-gray-500">{item.desc}</p>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
+
+      {/* ═════════════════ CAPABILITIES ═════════════════ */}
+      <section className="bg-white py-20 md:py-28">
+        <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal variant="up">
+            <p className="text-base text-[#86868b] text-center mb-3">核心能力</p>
+          </ScrollReveal>
+          <ScrollReveal variant="up" delay={80}>
+            <h2 className="headline-lg text-4xl md:text-6xl text-center mb-4">
+              从光学到出厂<span className="text-[#86868b]">.</span>
+              <br className="md:hidden" />
+              <span className="text-[#86868b]"> 自主把控.</span>
+            </h2>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-12">
+            {[
+              { icon: Factory, title: "自有工厂", desc: "现代化生产基地，全自动 SMT 贴片产线" },
+              { icon: Award, title: "品质认证", desc: "CE / UL / RoHS / SAA / DLC 全覆盖" },
+              { icon: Users, title: "研发团队", desc: "光学、电子、结构多学科协同" },
+              { icon: Globe, title: "全球网络", desc: "产品远销 50 多个国家和地区" },
+            ].map((item, i) => (
+              <ScrollReveal key={item.title} variant="up" delay={i * 80}>
+                <div className="apple-tile bg-[#f5f5f7] p-7 h-full">
+                  <item.icon className="w-7 h-7 text-[#1d1d1f] mb-5" strokeWidth={1.5} />
+                  <h3 className="headline-lg text-[19px] text-[#1d1d1f] mb-2">{item.title}</h3>
+                  <p className="text-[13px] text-[#6e6e73] leading-relaxed">{item.desc}</p>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═════════════════ SERVICE PROMISES ═════════════════ */}
+      <section className="bg-[#f5f5f7] py-20 md:py-24">
+        <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal variant="up">
+            <p className="text-base text-[#86868b] text-center mb-3">服务承诺</p>
+          </ScrollReveal>
+          <ScrollReveal variant="up" delay={80}>
+            <h2 className="headline-lg text-4xl md:text-6xl text-center mb-14">
+              专业<span className="text-[#86868b]">.</span> 可靠<span className="text-[#86868b]">.</span> 及时<span className="text-[#86868b]">.</span>
+            </h2>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-y-10 gap-x-8">
+            {[
+              { icon: ShieldCheck, title: "品质保障", desc: "所有产品出厂前 100% 老化测试" },
+              { icon: Zap, title: "高效节能", desc: "光效高达 150 lm/W，5 年质保" },
+              { icon: Truck, title: "全球发货", desc: "完善供应链，准时到港" },
+              { icon: Headphones, title: "技术支持", desc: "工程师 7×12 小时在线" },
+            ].map((s, i) => (
+              <ScrollReveal key={s.title} variant="up" delay={i * 80}>
+                <div>
+                  <s.icon className="w-6 h-6 text-[#1d1d1f] mb-4" strokeWidth={1.5} />
+                  <p className="headline-lg text-[17px] text-[#1d1d1f]">{s.title}</p>
+                  <p className="text-[13px] text-[#6e6e73] mt-1.5 leading-relaxed">{s.desc}</p>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═════════════════ CTA ═════════════════ */}
+      <section className="bg-[#1d1d1f] py-20 md:py-28 text-center">
+        <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal variant="up">
+            <h2 className="headline-xl text-4xl md:text-6xl text-white mb-4">
+              找一个可靠的 LED 供应商<span className="text-[#86868b]">.</span>
+            </h2>
+          </ScrollReveal>
+          <ScrollReveal variant="up" delay={80}>
+            <p className="text-xl md:text-2xl text-[#86868b] mb-8 max-w-2xl mx-auto">
+              提交需求清单，我们将于 1–2 个工作日内回复方案与报价。
+            </p>
+          </ScrollReveal>
+          <ScrollReveal variant="up" delay={160}>
+            <div className="flex flex-wrap justify-center gap-x-7 gap-y-3 items-center">
+              <Link href="/inquiry" className="appbtn-light appbtn">立即询价</Link>
+              <Link href="/products" className="applink applink-light">浏览产品</Link>
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
     </div>
   );
 }

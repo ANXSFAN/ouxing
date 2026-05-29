@@ -1,17 +1,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
-import {
-  Package,
-  ArrowRight,
-  Lightbulb,
-  ShieldCheck,
-  BatteryCharging,
-  Truck,
-} from "lucide-react";
+import { Package, Film } from "lucide-react";
 import { PublicNavbar } from "@/components/layout/public-navbar";
 import { PublicFooter } from "@/components/layout/public-footer";
-import { Button } from "@/components/ui/button";
+import { ScrollReveal } from "@/components/motion/scroll-reveal";
+import { SnapStackController } from "@/components/motion/snap-stack-controller";
+import { cn } from "@/lib/utils";
 
 type ContentJson = Record<string, { name?: string; description?: string }>;
 
@@ -20,297 +15,337 @@ function getName(content: unknown) {
   return c?.zh?.name || c?.en?.name || "";
 }
 
-async function getFeaturedProducts() {
+async function getProducts() {
   return prisma.product.findMany({
-    where: { isActive: true, isFeatured: true },
+    where: { isActive: true },
     include: {
       category: true,
       images: { where: { variantId: null }, orderBy: { sortOrder: "asc" }, take: 1 },
     },
-    take: 8,
-    orderBy: { createdAt: "desc" },
-  });
-}
-
-async function getCategories() {
-  return prisma.category.findMany({
-    where: { isActive: true },
-    include: {
-      _count: { select: { products: { where: { isActive: true } } } },
-    },
-    orderBy: { sortOrder: "asc" },
+    take: 14,
+    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
   });
 }
 
 export default async function HomePage() {
-  const [featuredProducts, categories] = await Promise.all([
-    getFeaturedProducts(),
-    getCategories(),
-  ]);
+  const products = await getProducts();
+
+  const subHero = products[0];
+  const bigBento = products.slice(1, 3);
+  const smallBento = products.slice(3, 7);
+  const lineup = products.slice(7, 13);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="snap-stack bg-white text-[#1d1d1f]">
+      <SnapStackController />
       <PublicNavbar />
 
-      {/* ── Hero ── */}
-      <section className="relative bg-neutral-950 overflow-hidden">
-        {/* Background image */}
-        <Image
-          src="/hero.jpg"
-          alt="Commercial LED Lighting"
-          fill
-          className="object-cover opacity-30"
-          priority
-          unoptimized
-        />
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/80 via-neutral-950/50 to-neutral-950/90" />
-
-        {/* Decorative accent line */}
-        <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-28 md:py-40 relative z-10 w-full">
-          <div className="flex flex-col items-start">
-            {/* Eyebrow */}
-            <p className="text-xs md:text-sm tracking-[0.3em] uppercase text-amber-500/80 font-medium mb-6">
-              Professional LED Lighting
-            </p>
-
-            {/* Brand name */}
-            <h1 className="text-6xl md:text-8xl lg:text-9xl font-black text-white tracking-tight leading-none">
-              欧星照明
-            </h1>
-
-            {/* Subtle tagline */}
-            <p className="text-neutral-500 text-sm md:text-base mt-4 max-w-md leading-relaxed">
-              面板灯 / 筒灯 / 射灯 / 灯管 / 工矿灯 — 全系列LED商业照明
-            </p>
-
-            {/* Divider */}
-            <div className="w-12 h-px bg-amber-500/50 mt-8 mb-8" />
-
-            {/* CTA */}
-            <div className="flex flex-wrap gap-3">
-              <Button
-                asChild
-                size="lg"
-                className="bg-amber-500 text-neutral-950 hover:bg-amber-400 h-11 px-7 text-sm font-semibold rounded-lg"
-              >
-                <Link href="/products">
-                  浏览产品 <ArrowRight className="w-4 h-4 ml-1.5" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                className="bg-transparent border border-neutral-700 text-neutral-300 hover:border-neutral-500 hover:text-white h-11 px-7 text-sm font-semibold rounded-lg"
-              >
-                <Link href="/inquiry">获取报价</Link>
-              </Button>
-            </div>
+      {/* ═════════════════ HERO — black spotlight + video placeholder ═════════════════ */}
+      <section className="snap-page hero-spotlight relative text-white overflow-hidden">
+        {/* Video placeholder — replace with <video autoPlay loop muted playsInline src="/hero.mp4" /> when ready */}
+        <div className="absolute inset-x-0 bottom-0 top-[40vh] sm:top-[42vh] z-0 flex items-center justify-center px-6 sm:px-12">
+          <div className="w-full max-w-3xl aspect-video rounded-3xl border border-dashed border-white/15 bg-white/[0.02] flex flex-col items-center justify-center gap-3">
+            <Film className="w-10 h-10 text-white/25" strokeWidth={1.25} />
+            <p className="text-white/35 text-[13px] tracking-wide">视频占位 · /public/hero.mp4</p>
           </div>
         </div>
 
-        {/* Bottom fade */}
-        <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-neutral-700/30 to-transparent" />
+        {/* Wordmark */}
+        <div className="absolute inset-x-0 top-[14vh] sm:top-[16vh] text-center px-4 z-10">
+          <h1 className="headline-xl text-6xl sm:text-7xl md:text-[120px] lg:text-[140px] text-white">
+            欧星 LED
+          </h1>
+        </div>
       </section>
 
-      {/* ── 产品分类 ── */}
-      {categories.length > 0 && (
-        <section className="bg-neutral-50 py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400 mb-1">
-                  Categories
+      {/* ═════════════════ SUB-HERO — second product spotlight (light) ═════════════════ */}
+      {subHero && (
+        <section className="snap-page relative bg-[#e8e8ed] text-[#1d1d1f] overflow-hidden border-b border-black/5">
+          <div className="h-full flex flex-col">
+            <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8 pt-14 md:pt-20 text-center w-full">
+              <ScrollReveal variant="up">
+                <p className="text-base md:text-lg text-[#6e6e73] mb-3 font-medium">
+                  {getName(subHero.category?.content) || "本月精选"}
                 </p>
-                <h2 className="text-2xl font-bold text-neutral-900">
-                  产品分类
+              </ScrollReveal>
+              <ScrollReveal variant="up" delay={100}>
+                <h2 className="headline-xl text-5xl sm:text-6xl md:text-[80px] mb-4">
+                  {getName(subHero.content)}
                 </h2>
-              </div>
-              <Link
-                href="/products"
-                className="text-sm text-neutral-500 hover:text-neutral-900 font-medium flex items-center gap-1 transition-colors"
-              >
-                查看全部 <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              </ScrollReveal>
+              <ScrollReveal variant="up" delay={180}>
+                <p className="text-xl sm:text-2xl md:text-[28px] text-[#1d1d1f] font-medium mb-6 tracking-tight">
+                  专业品质<span className="text-[#86868b]">.</span> 触手可得<span className="text-[#86868b]">.</span>
+                </p>
+              </ScrollReveal>
+              <ScrollReveal variant="up" delay={260}>
+                <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
+                  <Link href={`/products/${subHero.id}`} className="applink">了解更多</Link>
+                  <Link href="/inquiry" className="applink">立即询价</Link>
+                </div>
+              </ScrollReveal>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {categories.map((cat) => (
-                <Link
-                  key={cat.id}
-                  href={`/products?category=${cat.id}`}
-                  className="group bg-white rounded-xl p-5 border border-neutral-200/80 hover:border-neutral-300 hover:shadow-md transition-all"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center mb-3 group-hover:bg-neutral-200 transition-colors">
-                    <Lightbulb className="w-5 h-5 text-neutral-500" />
+
+            <ScrollReveal variant="fade" delay={350}>
+              <div className="relative flex-1 min-h-[360px] sm:min-h-[440px] md:min-h-[520px] mt-6 md:mt-10">
+                {subHero.images[0] ? (
+                  <Image
+                    src={subHero.images[0].url}
+                    alt={getName(subHero.content)}
+                    fill
+                    className="object-contain object-bottom"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Package className="w-20 h-20 text-[#d2d2d7]" />
                   </div>
-                  <h3 className="font-semibold text-neutral-900 text-sm group-hover:text-neutral-700 transition-colors">
-                    {getName(cat.content)}
-                  </h3>
-                  <p className="text-xs text-neutral-400 mt-1">
-                    {cat._count.products} 款产品
-                  </p>
-                </Link>
+                )}
+              </div>
+            </ScrollReveal>
+          </div>
+        </section>
+      )}
+
+      {/* ═════════════════ BIG PRODUCT BENTO (2 cols) ═════════════════ */}
+      {bigBento.length >= 2 && (
+        <section className="snap-page bg-white px-2 sm:px-3 py-3">
+          <div className="w-full max-w-[1440px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-3">
+            <ScrollReveal variant="rise">
+              <ProductBigTile theme="light" product={bigBento[0]} />
+            </ScrollReveal>
+            <ScrollReveal variant="rise" delay={140}>
+              <ProductBigTile theme="dark" product={bigBento[1]} />
+            </ScrollReveal>
+          </div>
+        </section>
+      )}
+
+      {/* ═════════════════ SMALL PRODUCT BENTO (4 cols) ═════════════════ */}
+      {smallBento.length > 0 && (
+        <section className="snap-page bg-white px-2 sm:px-3 py-3">
+          <div className="w-full max-w-[1440px] mx-auto grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {smallBento.map((p, i) => (
+              <ScrollReveal key={p.id} variant="rise" delay={i * 100}>
+                <ProductSmallTile
+                  product={p}
+                  theme={i % 2 === 0 ? "dark" : "light"}
+                />
+              </ScrollReveal>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ═════════════════ LINEUP — product grid ═════════════════ */}
+      {lineup.length > 0 && (
+        <section className="snap-page bg-white py-20 md:py-28">
+          <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
+            <ScrollReveal variant="up">
+              <p className="text-base text-[#86868b] text-center mb-3">更多精选</p>
+            </ScrollReveal>
+            <ScrollReveal variant="up" delay={80}>
+              <h2 className="headline-lg text-4xl md:text-6xl text-center mb-4">
+                熟悉的型号<span className="text-[#86868b]">. </span>
+                <br className="md:hidden" />
+                <span className="text-[#86868b]">即刻询价。</span>
+              </h2>
+            </ScrollReveal>
+            <ScrollReveal variant="up" delay={160}>
+              <div className="text-center mb-14">
+                <Link href="/products" className="applink">查看所有产品</Link>
+              </div>
+            </ScrollReveal>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-12">
+              {lineup.map((p, i) => (
+                <ScrollReveal key={p.id} variant="rise" delay={(i % 3) * 120}>
+                  <Link href={`/products/${p.id}`} className="group block text-center">
+                    <div className="relative aspect-square bg-[#e8e8ed] rounded-3xl overflow-hidden mb-5">
+                      {p.images[0] ? (
+                        <Image
+                          src={p.images[0].url}
+                          alt={getName(p.content)}
+                          fill
+                          className="object-contain p-8 transition-transform duration-700 group-hover:scale-105"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Package className="w-12 h-12 text-[#86868b]" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#86868b] mb-1">
+                      {getName(p.category?.content)}
+                    </p>
+                    <h3 className="headline-lg text-lg md:text-xl text-[#1d1d1f] mb-2 group-hover:opacity-80 transition-opacity">
+                      {getName(p.content)}
+                    </h3>
+                    <span className="applink">了解更多</span>
+                  </Link>
+                </ScrollReveal>
               ))}
             </div>
           </div>
         </section>
       )}
 
-      {/* ── 精选产品 ── */}
-      {featuredProducts.length > 0 && (
-        <section className="py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400 mb-1">
-                  Featured
-                </p>
-                <h2 className="text-2xl font-bold text-neutral-900">
-                  精选产品
-                </h2>
-              </div>
-              <Link
-                href="/products"
-                className="text-sm text-neutral-500 hover:text-neutral-900 font-medium flex items-center gap-1 transition-colors"
-              >
-                查看全部 <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {featuredProducts.map((product) => {
-                const specs = product.specs as Record<string, string | string[]> | null;
-                const highlightSpecs = specs
-                  ? Object.entries(specs).slice(0, 4).map(([k, v]) => [k, Array.isArray(v) ? v.join(" / ") : v] as [string, string])
-                  : [];
-                return (
-                  <Link
-                    key={product.id}
-                    href={`/products/${product.id}`}
-                    className="group bg-white rounded-xl border border-neutral-200/80 overflow-hidden hover:border-neutral-300 hover:shadow-md transition-all"
-                  >
-                    <div className="h-52 bg-neutral-50 relative overflow-hidden">
-                      {product.images[0] ? (
-                        <Image
-                          src={product.images[0].url}
-                          alt={getName(product.content)}
-                          fill
-                          className="object-contain p-4 group-hover:scale-105 transition-transform duration-500"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Package className="w-12 h-12 text-neutral-200" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
-                        {getName(product.category?.content)}
-                      </p>
-                      <h3 className="text-sm font-semibold text-neutral-900 mt-1 group-hover:text-neutral-700 transition-colors line-clamp-2">
-                        {getName(product.content)}
-                      </h3>
-                      <p className="text-xs text-neutral-400 mt-0.5 font-mono">
-                        {product.modelNumber}
-                      </p>
-                      {highlightSpecs.length > 0 && (
-                        <div className="grid grid-cols-2 gap-1.5 mt-3">
-                          {highlightSpecs.map(([key, val]) => (
-                            <div
-                              key={key}
-                              className="bg-neutral-50 rounded px-2 py-1 text-[11px]"
-                            >
-                              <span className="text-neutral-400">{key}</span>
-                              <span className="text-neutral-700 font-medium ml-1">
-                                {val}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* ═════════════════ WHY OUXING (dark band) ═════════════════ */}
+      <section className="snap-page bg-[#1d1d1f] text-white py-20 md:py-28 text-center">
+        <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal variant="up">
+            <p className="text-[#86868b] text-base mb-3">为什么选择欧星</p>
+          </ScrollReveal>
+          <ScrollReveal variant="up" delay={80}>
+            <h2 className="headline-xl text-4xl sm:text-6xl md:text-7xl mb-12">
+              专业<span className="text-[#86868b]">.</span> 可靠<span className="text-[#86868b]">.</span>
+              <br />
+              出口 50+ 国家<span className="text-[#86868b]">.</span>
+            </h2>
+          </ScrollReveal>
 
-      {/* ── 优势 ── */}
-      <section className="bg-neutral-50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <p className="text-xs font-semibold uppercase tracking-widest text-neutral-400 mb-1">
-              Why Us
-            </p>
-            <h2 className="text-2xl font-bold text-neutral-900">我们的优势</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-y-12 mt-16">
             {[
-              {
-                icon: ShieldCheck,
-                title: "品质认证",
-                desc: "CE / UL / RoHS / SAA / DLC 等国际认证全覆盖",
-              },
-              {
-                icon: BatteryCharging,
-                title: "高效节能",
-                desc: "高光效LED光源，CRI>80/90可选，寿命超50000小时",
-              },
-              {
-                icon: Truck,
-                title: "全球交付",
-                desc: "产品出口50+国家，完善供应链确保准时交付",
-              },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="bg-white rounded-xl p-7 border border-neutral-200/80 hover:shadow-md transition-all"
-              >
-                <div className="w-12 h-12 rounded-xl bg-neutral-100 flex items-center justify-center mb-5">
-                  <item.icon className="w-6 h-6 text-neutral-600" />
+              { v: "10+", l: "年制造经验" },
+              { v: "500+", l: "产品 SKU" },
+              { v: "50+", l: "出口国家" },
+              { v: "50K", l: "小时寿命" },
+            ].map((s, i) => (
+              <ScrollReveal key={s.l} variant="up" delay={i * 80}>
+                <div>
+                  <div className="headline-xl text-5xl md:text-6xl text-white">{s.v}</div>
+                  <p className="text-sm text-[#86868b] mt-2">{s.l}</p>
                 </div>
-                <h3 className="font-bold text-neutral-900 mb-2">
-                  {item.title}
-                </h3>
-                <p className="text-sm text-neutral-500 leading-relaxed">
-                  {item.desc}
-                </p>
-              </div>
+              </ScrollReveal>
             ))}
           </div>
+
+          <ScrollReveal variant="up" delay={400}>
+            <div className="mt-12 flex flex-wrap justify-center gap-x-7 gap-y-2">
+              <Link href="/about" className="applink applink-light">了解我们</Link>
+              <Link href="/inquiry" className="applink applink-light">联系销售</Link>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-neutral-900 rounded-2xl p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
-                需要产品报价？
-              </h2>
-              <p className="text-neutral-400">
-                提交询价，我们将在1-2个工作日内回复您。
-              </p>
+      {/* ═════════════════ FINAL CTA ═════════════════ */}
+      <section className="snap-page bg-white py-20 md:py-28 text-center">
+        <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
+          <ScrollReveal variant="up">
+            <h2 className="headline-xl text-4xl md:text-6xl mb-4">
+              准备好开始您的项目？
+            </h2>
+          </ScrollReveal>
+          <ScrollReveal variant="up" delay={80}>
+            <p className="text-xl md:text-2xl text-[#86868b] mb-8">
+              提交需求清单，我们将于 1–2 个工作日内回复方案与报价。
+            </p>
+          </ScrollReveal>
+          <ScrollReveal variant="up" delay={160}>
+            <div className="flex flex-wrap justify-center gap-x-7 gap-y-3 items-center">
+              <Link href="/inquiry" className="appbtn">立即询价</Link>
+              <Link href="/products" className="applink">浏览全部产品</Link>
             </div>
-            <Button
-              asChild
-              size="lg"
-              className="bg-white text-neutral-900 hover:bg-neutral-100 h-11 px-8 font-semibold shrink-0 rounded-lg"
-            >
-              <Link href="/inquiry">
-                立即询价 <ArrowRight className="w-4 h-4 ml-1.5" />
-              </Link>
-            </Button>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
       <PublicFooter />
     </div>
+  );
+}
+
+/* ────────── Product Bento tiles ────────── */
+
+interface ProductPayload {
+  id: string;
+  content: unknown;
+  category: { content: unknown } | null;
+  images: { url: string }[];
+}
+
+function ProductBigTile({ theme, product }: { theme: "light" | "dark"; product: ProductPayload }) {
+  const isDark = theme === "dark";
+  const name = getName(product.content);
+  const catName = getName(product.category?.content);
+  return (
+    <Link
+      href={`/products/${product.id}`}
+      className={cn(
+        "apple-tile group block relative aspect-square md:aspect-[5/6] lg:aspect-[5/5] overflow-hidden",
+        isDark ? "bg-[#1d1d1f] text-white" : "bg-[#e8e8ed] text-[#1d1d1f]",
+      )}
+    >
+      <div className="absolute inset-x-0 top-0 flex flex-col items-center pt-14 sm:pt-20 px-6 text-center z-10">
+        {catName && (
+          <p className={cn("text-sm font-medium mb-2", isDark ? "text-[#a1a1a6]" : "text-[#6e6e73]")}>
+            {catName}
+          </p>
+        )}
+        <h3 className="headline-xl text-3xl sm:text-5xl md:text-[44px] mb-4 max-w-md">
+          {name}
+        </h3>
+        <span className={cn("applink", isDark && "applink-light")}>了解更多</span>
+      </div>
+      {product.images[0] ? (
+        <div className="absolute inset-x-0 bottom-0 h-[58%]">
+          <Image
+            src={product.images[0].url}
+            alt={name}
+            fill
+            className="apple-tile-img object-contain p-6 sm:p-10"
+            unoptimized
+          />
+        </div>
+      ) : (
+        <div className="absolute inset-x-0 bottom-0 h-[58%] flex items-center justify-center">
+          <Package className={cn("w-16 h-16", isDark ? "text-[#3a3a3c]" : "text-[#d2d2d7]")} />
+        </div>
+      )}
+    </Link>
+  );
+}
+
+function ProductSmallTile({ product, theme }: { product: ProductPayload; theme: "light" | "dark" }) {
+  const isDark = theme === "dark";
+  const name = getName(product.content);
+  const catName = getName(product.category?.content);
+  return (
+    <Link
+      href={`/products/${product.id}`}
+      className={cn(
+        "apple-tile group block relative aspect-[4/5] overflow-hidden",
+        isDark ? "bg-[#1d1d1f] text-white" : "bg-[#e8e8ed] text-[#1d1d1f]",
+      )}
+    >
+      <div className="absolute inset-x-0 top-0 flex flex-col items-center pt-10 px-5 text-center z-10">
+        {catName && (
+          <p className={cn("text-xs mb-2 font-medium", isDark ? "text-[#a1a1a6]" : "text-[#6e6e73]")}>
+            {catName}
+          </p>
+        )}
+        <h3 className={cn("headline-lg text-xl sm:text-2xl mb-3", isDark ? "text-white" : "text-[#1d1d1f]")}>
+          {name}
+        </h3>
+        <span className={cn("applink", isDark && "applink-light")}>了解更多</span>
+      </div>
+      {product.images[0] ? (
+        <div className="absolute inset-x-0 bottom-0 h-[55%]">
+          <Image
+            src={product.images[0].url}
+            alt={name}
+            fill
+            className="apple-tile-img object-contain p-5"
+            unoptimized
+          />
+        </div>
+      ) : (
+        <div className="absolute inset-x-0 bottom-0 h-[55%] flex items-center justify-center">
+          <Package className={cn("w-12 h-12", isDark ? "text-[#3a3a3c]" : "text-[#d2d2d7]")} />
+        </div>
+      )}
+    </Link>
   );
 }

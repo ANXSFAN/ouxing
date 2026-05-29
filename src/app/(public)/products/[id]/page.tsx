@@ -4,14 +4,14 @@ import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DOC_TYPE_LABELS, SHIPPING_SPEC_KEYS } from "@/lib/constants";
 import { addToCart } from "@/lib/inquiry-cart";
 import { toast } from "sonner";
 import {
   Download, FileText, Shield, Package, Loader2,
-  MessageSquare, ChevronLeft, ChevronRight, Image as ImageIcon, ClipboardList,
+  ChevronLeft, ChevronRight, Image as ImageIcon,
+  ClipboardList, Truck, ShieldCheck, RotateCw, Plus, Minus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,10 +33,8 @@ function getName(c: unknown) { const v = c as ContentJson | null; return v?.zh?.
 function getDesc(c: unknown) { const v = c as ContentJson | null; return v?.zh?.description || v?.en?.description || ""; }
 function fmtSize(b: number) { return b < 1048576 ? `${(b / 1024).toFixed(0)} KB` : `${(b / 1048576).toFixed(1)} MB`; }
 
-/** Internal logistics keys — kept off the public product page (used only in the packing list / datasheet). */
 const SHIPPING_KEYS = new Set<string>(SHIPPING_SPEC_KEYS);
 
-/** Format a spec value: arrays joined with " / " */
 function fmtSpecVal(val: string | string[], unit?: string): string {
   const str = Array.isArray(val) ? val.join(" / ") : val;
   return unit ? `${str} ${unit}` : str;
@@ -48,8 +46,8 @@ export default function ProductDetailPage() {
   const [attrs, setAttrs] = useState<AttrDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImg, setSelectedImg] = useState(0);
-  // Variant dimension selections: { cct: "3000K", wattage: "18W" }
   const [selections, setSelections] = useState<Record<string, string>>({});
+  const [qty, setQty] = useState(1);
 
   useEffect(() => {
     Promise.all([
@@ -62,21 +60,17 @@ export default function ProductDetailPage() {
     });
   }, [params.id]);
 
-  // ── Variant logic ──
-
   const activeVariants = useMemo(
     () => (product?.variants || []).filter((v) => v.isActive),
     [product?.variants],
   );
 
-  // Extract variant dimensions: keys that differ across variants
   const variantDimensions = useMemo(() => {
     if (activeVariants.length === 0) return [];
     const allKeys = new Set<string>();
     activeVariants.forEach((v) =>
-      Object.keys(v.specs || {}).forEach((k) => { if (!SHIPPING_KEYS.has(k)) allKeys.add(k); })
+      Object.keys(v.specs || {}).forEach((k) => { if (!SHIPPING_KEYS.has(k)) allKeys.add(k); }),
     );
-
     return Array.from(allKeys)
       .map((key) => {
         const values = [...new Set(activeVariants.map((v) => v.specs?.[key]).filter(Boolean))] as string[];
@@ -85,7 +79,6 @@ export default function ProductDetailPage() {
       .filter((d) => d.values.length > 0);
   }, [activeVariants]);
 
-  // Default selections to first variant's specs
   useEffect(() => {
     if (activeVariants.length > 0 && Object.keys(selections).length === 0) {
       const first = activeVariants[0];
@@ -93,30 +86,24 @@ export default function ProductDetailPage() {
     }
   }, [activeVariants, selections]);
 
-  // Find matching variant from selections
   const currentVariant = useMemo(() => {
     if (activeVariants.length === 0 || variantDimensions.length === 0) return null;
     return activeVariants.find((v) =>
-      variantDimensions.every((dim) => v.specs?.[dim.key] === selections[dim.key])
+      variantDimensions.every((dim) => v.specs?.[dim.key] === selections[dim.key]),
     ) || null;
   }, [activeVariants, variantDimensions, selections]);
 
-  // Gallery shows variant images when the variant has its own, otherwise falls back to product defaults.
   const displayImages: ProductImg[] = useMemo(() => {
     if (currentVariant && currentVariant.images.length > 0) return currentVariant.images;
     return product?.images || [];
   }, [currentVariant, product?.images]);
 
-  // Reset the active thumbnail when switching variants so we don't index past the new gallery.
   useEffect(() => { setSelectedImg(0); }, [currentVariant?.id]);
 
-  // Click a chip -> snap to the variant that best matches (dim=val + current selections).
-  // Guarantees selections always map to a real variant; avoids phantom combinations.
   const pickVariant = (dimKey: string, val: string): VariantRow | null => {
     const candidates = activeVariants.filter((v) => v.specs?.[dimKey] === val);
     if (candidates.length === 0) return null;
     if (candidates.length === 1) return candidates[0];
-    // Score by overlap with current selections
     const scored = candidates.map((v) => ({
       v,
       score: Object.entries(v.specs || {}).filter(([k, vv]) => selections[k] === vv).length,
@@ -125,10 +112,17 @@ export default function ProductDetailPage() {
     return scored[0].v;
   };
 
-  // ── Rendering ──
-
-  if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-gray-300" /></div>;
-  if (!product) return <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3"><Package className="w-12 h-12 text-gray-200" /><p className="text-gray-400">产品不存在</p></div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Loader2 className="w-6 h-6 animate-spin text-[#86868b]" />
+    </div>
+  );
+  if (!product) return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+      <Package className="w-12 h-12 text-[#d2d2d7]" />
+      <p className="text-[#86868b]">产品不存在</p>
+    </div>
+  );
 
   const name = getName(product.content);
   const desc = getDesc(product.content);
@@ -136,22 +130,17 @@ export default function ProductDetailPage() {
   const productSpecs = product.specs || {};
   const displaySku = currentVariant?.sku || product.modelNumber;
 
-  // Variant dimension keys (to filter from specs display)
   const dimKeys = new Set(variantDimensions.map((d) => d.key));
 
-  // Build display specs: variant-specific specs override product-level, skip dimension keys
   const displaySpecs = (() => {
     const merged: Record<string, string | string[]> = { ...productSpecs };
-    // If variant selected, override with variant's specific values
     if (currentVariant) {
-      for (const [k, v] of Object.entries(currentVariant.specs)) {
-        merged[k] = v;
-      }
+      for (const [k, v] of Object.entries(currentVariant.specs)) merged[k] = v;
     }
     return Object.entries(merged)
-      .filter(([k, v]) => v && (typeof v === "string" ? v.trim() !== "" : v.length > 0))
-      .filter(([k]) => !dimKeys.has(k)) // hide variant dimension keys (already shown in selector)
-      .filter(([k]) => !SHIPPING_KEYS.has(k)) // hide internal shipping/packing data
+      .filter(([, v]) => v && (typeof v === "string" ? v.trim() !== "" : v.length > 0))
+      .filter(([k]) => !dimKeys.has(k))
+      .filter(([k]) => !SHIPPING_KEYS.has(k))
       .map(([key, val]) => {
         const def = attrs.find((a) => a.key === key);
         const label = def ? (def.name.zh || def.name.en || key) : key;
@@ -167,7 +156,6 @@ export default function ProductDetailPage() {
     return def ? (def.name.zh || def.name.en || key) : key;
   };
 
-  // Variant label for cart
   const variantLabel = currentVariant
     ? Object.entries(currentVariant.specs)
         .filter(([k]) => !SHIPPING_KEYS.has(k))
@@ -175,82 +163,138 @@ export default function ProductDetailPage() {
         .join(", ")
     : "";
 
+  const handleAddToCart = () => {
+    for (let i = 0; i < qty; i++) {
+      addToCart({
+        productId: product.id,
+        variantId: currentVariant?.id ?? null,
+        name: variantLabel ? `${name}（${variantLabel}）` : name,
+        modelNumber: displaySku,
+        imageUrl: displayImages[0]?.url,
+      });
+    }
+    toast.success(`已加入询价单 (${qty} 件)`);
+  };
+
   return (
-    <div className="bg-white min-h-screen">
-      {/* Breadcrumb */}
-      <div className="bg-gray-50 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div className="text-sm text-gray-400 flex items-center gap-1.5">
-            <Link href="/" className="hover:text-blue-600">首页</Link>
-            <span>/</span>
-            <Link href="/products" className="hover:text-blue-600">产品中心</Link>
-            {catName && <><span>/</span><span>{catName}</span></>}
-            <span>/</span>
-            <span className="text-gray-600">{name}</span>
-          </div>
+    <div className="bg-white min-h-screen text-[#1d1d1f]">
+      {/* Apple-style breadcrumb — thin, no bg band */}
+      <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-2">
+        <div className="text-[12px] text-[#86868b] flex items-center gap-1.5 flex-wrap">
+          <Link href="/" className="hover:text-[#1d1d1f] transition-colors">首页</Link>
+          <span className="text-[#d2d2d7]">›</span>
+          <Link href="/products" className="hover:text-[#1d1d1f] transition-colors">全部产品</Link>
+          {catName && <>
+            <span className="text-[#d2d2d7]">›</span>
+            <Link href={`/products?category=${product.category?.id}`} className="hover:text-[#1d1d1f] transition-colors">{catName}</Link>
+          </>}
+          <span className="text-[#d2d2d7]">›</span>
+          <span className="text-[#1d1d1f] font-medium line-clamp-1">{name}</span>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          {/* ── Left: Image Gallery ── */}
-          <div>
-            <div className="aspect-square bg-gray-50 border border-gray-100 rounded-xl relative overflow-hidden">
+      <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          {/* ── Image Gallery ── */}
+          <div className="lg:col-span-7">
+            <div className="aspect-square bg-[#e8e8ed] rounded-3xl relative overflow-hidden group">
               {displayImages[selectedImg] ? (
                 <Image
+                  key={displayImages[selectedImg].id}
                   src={displayImages[selectedImg].url}
                   alt={name}
                   fill
-                  className="object-contain p-6 transition-opacity duration-300"
+                  className="object-contain p-10 transition-transform duration-500 group-hover:scale-[1.03]"
                   unoptimized
                 />
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-300">
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-[#d2d2d7]">
                   <ImageIcon className="w-16 h-16" />
-                  <span className="text-xs uppercase font-mono mt-2">NO IMAGE</span>
+                  <span className="text-xs uppercase mt-2 tracking-wider">NO IMAGE</span>
                 </div>
               )}
               {displayImages.length > 1 && (
                 <>
-                  <button onClick={() => setSelectedImg(Math.max(0, selectedImg - 1))} disabled={selectedImg === 0}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 shadow flex items-center justify-center disabled:opacity-20 hover:bg-white transition-all">
-                    <ChevronLeft className="w-4 h-4" />
+                  <button
+                    onClick={() => setSelectedImg(Math.max(0, selectedImg - 1))}
+                    disabled={selectedImg === 0}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/85 backdrop-blur-md flex items-center justify-center disabled:opacity-30 hover:bg-white transition-all shadow-sm"
+                    aria-label="上一张"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-[#1d1d1f]" strokeWidth={1.75} />
                   </button>
-                  <button onClick={() => setSelectedImg(Math.min(displayImages.length - 1, selectedImg + 1))} disabled={selectedImg === displayImages.length - 1}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 shadow flex items-center justify-center disabled:opacity-20 hover:bg-white transition-all">
-                    <ChevronRight className="w-4 h-4" />
+                  <button
+                    onClick={() => setSelectedImg(Math.min(displayImages.length - 1, selectedImg + 1))}
+                    disabled={selectedImg === displayImages.length - 1}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/85 backdrop-blur-md flex items-center justify-center disabled:opacity-30 hover:bg-white transition-all shadow-sm"
+                    aria-label="下一张"
+                  >
+                    <ChevronRight className="w-5 h-5 text-[#1d1d1f]" strokeWidth={1.75} />
                   </button>
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/85 backdrop-blur-md rounded-full px-3 py-1 text-[11px] text-[#1d1d1f] tabular-nums font-medium">
+                    {selectedImg + 1} / {displayImages.length}
+                  </div>
                 </>
               )}
             </div>
+
+            {/* Thumbnails */}
             {displayImages.length > 1 && (
-              <div className="flex gap-2 mt-3">
+              <div className="flex gap-2.5 mt-4 overflow-x-auto pb-2">
                 {displayImages.map((img, i) => (
-                  <button key={img.id} onClick={() => setSelectedImg(i)}
-                    className={cn("w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
-                      i === selectedImg ? "border-blue-600" : "border-gray-100 hover:border-gray-300")}>
-                    <Image src={img.url} alt="" width={64} height={64} className="w-full h-full object-contain" unoptimized />
+                  <button
+                    key={img.id}
+                    onClick={() => setSelectedImg(i)}
+                    className={cn(
+                      "w-20 h-20 rounded-2xl overflow-hidden transition-all shrink-0 relative bg-[#e8e8ed]",
+                      i === selectedImg
+                        ? "ring-2 ring-[#1d1d1f] ring-offset-2 ring-offset-white"
+                        : "opacity-60 hover:opacity-100",
+                    )}
+                  >
+                    <Image src={img.url} alt="" fill className="object-contain p-2" unoptimized />
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* ── Right: Product Info ── */}
-          <div>
-            <span className="text-[11px] font-bold text-blue-600 uppercase tracking-widest">{catName}</span>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mt-1 mb-1">{name}</h1>
-            <p className="text-sm text-gray-400 font-mono mb-6">SKU {displaySku}</p>
+          {/* ── Product Info ── */}
+          <div className="lg:col-span-5">
+            {catName && (
+              <p className="text-[13px] text-[#86868b] mb-2 font-medium">{catName}</p>
+            )}
+            <h1 className="headline-lg text-3xl md:text-4xl text-[#1d1d1f] leading-tight">{name}</h1>
+            <p className="text-[13px] text-[#86868b] mt-2 mb-6 tabular-nums">SKU · {displaySku}</p>
 
-            {desc && <p className="text-sm text-gray-500 leading-relaxed mb-6 whitespace-pre-line">{desc}</p>}
+            {/* Certificates row — restrained outline pills */}
+            {product.certificates.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap mb-6">
+                {product.certificates.map((c) => (
+                  <span
+                    key={c.id}
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-[#1d1d1f] border border-[#d2d2d7] px-2.5 py-1 rounded-full"
+                  >
+                    <Shield className="w-3 h-3" strokeWidth={1.75} /> {c.certType}
+                  </span>
+                ))}
+              </div>
+            )}
 
-            {/* Variant selector — grouped by dimension */}
+            {desc && (
+              <p className="text-[15px] text-[#424245] leading-relaxed mb-7 whitespace-pre-line">{desc}</p>
+            )}
+
+            {/* Variant selector */}
             {variantDimensions.length > 0 && (
-              <div className="mb-6 space-y-4">
+              <div className="space-y-5 pb-7 mb-7 border-b border-black/10">
                 {variantDimensions.map((dim) => (
                   <div key={dim.key}>
-                    <p className="text-xs font-semibold text-gray-500 mb-2">
+                    <p className="text-[13px] font-semibold text-[#1d1d1f] mb-3">
                       {getAttrLabel(dim.key)}
+                      <span className="text-[#86868b] font-normal ml-2">
+                        {selections[dim.key]}
+                      </span>
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {dim.values.map((val) => {
@@ -264,10 +308,10 @@ export default function ProductDetailPage() {
                               if (target) setSelections({ ...(target.specs || {}) });
                             }}
                             className={cn(
-                              "px-4 py-2 rounded-lg border text-sm font-medium transition-all",
+                              "inline-flex items-center px-4 py-2 rounded-full border text-[13px] font-medium transition-all",
                               active
-                                ? "border-blue-600 bg-blue-50 text-blue-700"
-                                : "border-gray-200 hover:border-gray-300 text-gray-600 bg-white"
+                                ? "border-[#1d1d1f] bg-[#1d1d1f] text-white"
+                                : "border-[#d2d2d7] hover:border-[#1d1d1f] text-[#1d1d1f] bg-white",
                             )}
                           >
                             {val}
@@ -280,149 +324,206 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {/* Quick highlight specs */}
+            {/* Highlight specs */}
             {highlightSpecs.length > 0 && (
-              <div className="grid grid-cols-2 gap-px bg-gray-200 rounded-xl overflow-hidden mb-6">
-                {highlightSpecs.map((spec, i) => (
-                  <div key={spec.key} className={cn("bg-white px-4 py-3 flex flex-col",
-                    highlightSpecs.length % 2 === 1 && i === highlightSpecs.length - 1 ? "col-span-2" : ""
-                  )}>
-                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider leading-none mb-1">
+              <div className="grid grid-cols-2 gap-3 mb-7">
+                {highlightSpecs.slice(0, 4).map((spec) => (
+                  <div
+                    key={spec.key}
+                    className="bg-[#f5f5f7] rounded-2xl px-4 py-3"
+                  >
+                    <p className="text-[11px] text-[#86868b] mb-1">
                       {spec.label}
-                    </span>
-                    <span className="text-sm font-bold text-gray-900">{spec.value}</span>
+                    </p>
+                    <p className="text-[15px] font-semibold text-[#1d1d1f] tabular-nums">{spec.value}</p>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Certificates */}
-            {product.certificates.length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap mb-6">
-                <Shield className="w-4 h-4 text-green-600" />
-                {product.certificates.map((c) => (
-                  <span key={c.id} className="text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded font-medium">{c.certType}</span>
-                ))}
+            {/* Quantity + CTA */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-4">
+                <p className="text-[13px] font-medium text-[#1d1d1f] w-10">数量</p>
+                <div className="inline-flex items-center border border-[#d2d2d7] rounded-full h-12 px-1">
+                  <button
+                    onClick={() => setQty(Math.max(1, qty - 1))}
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors"
+                    aria-label="减少"
+                  >
+                    <Minus className="w-4 h-4" strokeWidth={1.75} />
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    value={qty}
+                    onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-12 h-10 text-center text-[14px] font-semibold tabular-nums bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <button
+                    onClick={() => setQty(qty + 1)}
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors"
+                    aria-label="增加"
+                  >
+                    <Plus className="w-4 h-4" strokeWidth={1.75} />
+                  </button>
+                </div>
               </div>
-            )}
 
-            {/* CTA */}
-            <div className="flex gap-3">
-              <Button
-                size="lg"
-                className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-6 rounded-lg font-semibold"
-                onClick={() => {
-                  addToCart({
-                    productId: product.id,
-                    variantId: currentVariant?.id ?? null,
-                    name: variantLabel ? `${name}（${variantLabel}）` : name,
-                    modelNumber: displaySku,
-                    imageUrl: displayImages[0]?.url,
-                  });
-                  toast.success("已加入询价单");
-                }}
+              <button
+                onClick={handleAddToCart}
+                className="appbtn w-full h-12 text-[15px]"
               >
-                <ClipboardList className="w-4 h-4 mr-2" /> 加入询价单
-              </Button>
-              <Button asChild variant="outline" size="lg" className="h-12 px-6 rounded-lg">
-                <Link href="/inquiry">
-                  <MessageSquare className="w-4 h-4 mr-2" /> 去询价
-                </Link>
-              </Button>
+                <ClipboardList className="w-4 h-4" strokeWidth={1.75} /> 加入询价单
+              </button>
+              <div className="text-center pt-1">
+                <Link href="/inquiry" className="applink">直接询价</Link>
+              </div>
+            </div>
+
+            {/* Trust badges — minimal apple-style */}
+            <div className="mt-8 pt-7 border-t border-black/10 grid grid-cols-3 gap-3">
+              {[
+                { icon: Truck, title: "全球发货", desc: "50+ 国家" },
+                { icon: ShieldCheck, title: "品质保障", desc: "国际认证" },
+                { icon: RotateCw, title: "5 年质保", desc: "长寿命" },
+              ].map((b) => (
+                <div key={b.title} className="text-center">
+                  <b.icon className="w-5 h-5 text-[#1d1d1f] mx-auto mb-2" strokeWidth={1.5} />
+                  <p className="text-[12px] font-medium text-[#1d1d1f]">{b.title}</p>
+                  <p className="text-[11px] text-[#86868b] mt-0.5">{b.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* ── Tabs: Specs / Description / Downloads ── */}
-        <div className="mt-12">
+        {/* ── Tabs ── */}
+        <div className="mt-20">
           <Tabs defaultValue="specs">
-            <TabsList className="bg-gray-100 rounded-lg p-1">
-              <TabsTrigger value="specs" className="rounded-md">技术参数</TabsTrigger>
-              {desc && <TabsTrigger value="desc" className="rounded-md">产品描述</TabsTrigger>}
-              <TabsTrigger value="downloads" className="rounded-md">资料下载</TabsTrigger>
+            <TabsList className="bg-transparent gap-0 p-0 h-auto border-b border-black/10 rounded-none w-full justify-start">
+              <TabsTrigger
+                value="specs"
+                className="rounded-none border-0 px-5 mr-1 pb-4 pt-2 text-[14px] font-medium data-[state=active]:border-b-2 data-[state=active]:border-[#1d1d1f] data-[state=active]:shadow-none data-[state=active]:bg-transparent text-[#86868b] data-[state=active]:text-[#1d1d1f] transition-colors"
+              >
+                技术参数
+              </TabsTrigger>
+              {desc && (
+                <TabsTrigger
+                  value="desc"
+                  className="rounded-none border-0 px-5 mr-1 pb-4 pt-2 text-[14px] font-medium data-[state=active]:border-b-2 data-[state=active]:border-[#1d1d1f] data-[state=active]:shadow-none data-[state=active]:bg-transparent text-[#86868b] data-[state=active]:text-[#1d1d1f] transition-colors"
+                >
+                  产品描述
+                </TabsTrigger>
+              )}
+              <TabsTrigger
+                value="downloads"
+                className="rounded-none border-0 px-5 mr-1 pb-4 pt-2 text-[14px] font-medium data-[state=active]:border-b-2 data-[state=active]:border-[#1d1d1f] data-[state=active]:shadow-none data-[state=active]:bg-transparent text-[#86868b] data-[state=active]:text-[#1d1d1f] transition-colors"
+              >
+                资料下载
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="specs" className="mt-6">
+            <TabsContent value="specs" className="mt-8">
               {displaySpecs.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-gray-200 rounded-xl overflow-hidden">
+                <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-0 max-w-3xl">
                   {displaySpecs.map((spec) => (
-                    <div key={spec.key} className="bg-white px-5 py-3.5 flex justify-between items-center">
-                      <span className="text-sm text-gray-500">{spec.label}</span>
-                      <span className="text-sm font-semibold text-gray-900">{spec.value}</span>
+                    <div
+                      key={spec.key}
+                      className="flex items-baseline justify-between py-3.5 border-b border-black/10"
+                    >
+                      <dt className="text-[13px] text-[#86868b]">{spec.label}</dt>
+                      <dd className="text-[14px] font-medium text-[#1d1d1f] tabular-nums text-right ml-4">
+                        {spec.value}
+                      </dd>
                     </div>
                   ))}
-                </div>
+                </dl>
               ) : (
-                <p className="text-sm text-gray-400 py-8 text-center">暂无技术参数</p>
+                <p className="text-[13px] text-[#86868b] py-8 text-center">暂无技术参数</p>
               )}
             </TabsContent>
 
             {desc && (
-              <TabsContent value="desc" className="mt-6">
-                <div className="prose prose-sm max-w-none text-gray-600 whitespace-pre-line">{desc}</div>
+              <TabsContent value="desc" className="mt-8">
+                <div className="max-w-3xl text-[15px] text-[#424245] leading-relaxed whitespace-pre-line">
+                  {desc}
+                </div>
               </TabsContent>
             )}
 
-            <TabsContent value="downloads" className="mt-6">
+            <TabsContent value="downloads" className="mt-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {/* Auto-generated datasheet — always available, two languages. */}
-                <a
+                <DownloadCard
                   href={`/api/products/${product.id}/datasheet?lang=zh`}
-                  className="flex items-center gap-3 p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all group"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600 transition-colors">产品规格书</p>
-                    <p className="text-xs text-gray-400">PDF · 中文</p>
-                  </div>
-                  <Download className="w-4 h-4 text-gray-300 group-hover:text-blue-600 transition-colors shrink-0" />
-                </a>
-                <a
+                  icon={FileText}
+                  title="产品规格书"
+                  meta="PDF · 中文"
+                />
+                <DownloadCard
                   href={`/api/products/${product.id}/datasheet?lang=en`}
-                  className="flex items-center gap-3 p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all group"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600 transition-colors">Product Datasheet</p>
-                    <p className="text-xs text-gray-400">PDF · English</p>
-                  </div>
-                  <Download className="w-4 h-4 text-gray-300 group-hover:text-blue-600 transition-colors shrink-0" />
-                </a>
+                  icon={FileText}
+                  title="Product Datasheet"
+                  meta="PDF · English"
+                />
                 {product.documents.map((doc) => (
-                    <a key={doc.id} href={doc.filePath} download
-                      className="flex items-center gap-3 p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all group">
-                      <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
-                        <FileText className="w-5 h-5 text-red-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-600 transition-colors">{doc.name}</p>
-                        <p className="text-xs text-gray-400">{DOC_TYPE_LABELS[doc.docType]} · {fmtSize(doc.fileSize)}</p>
-                      </div>
-                      <Download className="w-4 h-4 text-gray-300 group-hover:text-blue-600 transition-colors shrink-0" />
-                    </a>
-                  ))}
-                  {product.certificates.map((cert) => (
-                    <a key={cert.id} href={cert.filePath} download
-                      className="flex items-center gap-3 p-4 rounded-xl border border-gray-100 hover:border-green-200 hover:shadow-sm transition-all group">
-                      <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
-                        <Shield className="w-5 h-5 text-green-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate group-hover:text-green-600 transition-colors">{cert.name}</p>
-                        <p className="text-xs text-gray-400">{cert.certType} · {fmtSize(cert.fileSize)}</p>
-                      </div>
-                      <Download className="w-4 h-4 text-gray-300 group-hover:text-green-600 transition-colors shrink-0" />
-                    </a>
-                  ))}
+                  <DownloadCard
+                    key={doc.id}
+                    href={doc.filePath}
+                    download
+                    icon={FileText}
+                    title={doc.name}
+                    meta={`${DOC_TYPE_LABELS[doc.docType]} · ${fmtSize(doc.fileSize)}`}
+                  />
+                ))}
+                {product.certificates.map((cert) => (
+                  <DownloadCard
+                    key={cert.id}
+                    href={cert.filePath}
+                    download
+                    icon={Shield}
+                    title={cert.name}
+                    meta={`${cert.certType} · ${fmtSize(cert.fileSize)}`}
+                  />
+                ))}
               </div>
             </TabsContent>
           </Tabs>
         </div>
       </div>
     </div>
+  );
+}
+
+function DownloadCard({
+  href,
+  download,
+  icon: Icon,
+  title,
+  meta,
+}: {
+  href: string;
+  download?: boolean;
+  icon: typeof FileText;
+  title: string;
+  meta: string;
+}) {
+  return (
+    <a
+      href={href}
+      download={download}
+      className="group flex items-center gap-3 p-4 rounded-2xl bg-[#f5f5f7] hover:bg-[#e8e8ed] transition-colors"
+    >
+      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0">
+        <Icon className="w-5 h-5 text-[#1d1d1f]" strokeWidth={1.5} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-medium text-[#1d1d1f] truncate">
+          {title}
+        </p>
+        <p className="text-[11px] text-[#86868b] mt-0.5">{meta}</p>
+      </div>
+      <Download className="w-4 h-4 text-[#86868b] group-hover:text-[#1d1d1f] transition-colors shrink-0" strokeWidth={1.75} />
+    </a>
   );
 }
