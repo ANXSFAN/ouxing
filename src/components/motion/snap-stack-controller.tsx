@@ -18,6 +18,13 @@ export function SnapStackController() {
     const host = document.querySelector<HTMLElement>(".snap-stack");
     if (!host) return;
 
+    // On touch / small screens we let the browser scroll natively (see the
+    // matching @media block in globals.css). Hijacking touch here makes mobile
+    // swiping feel laborious, so bail out entirely on those devices.
+    if (window.matchMedia("(max-width: 768px), (pointer: coarse)").matches) {
+      return;
+    }
+
     const NAV_OFFSET = 44;
     const ANIM_MS = 650;
     const WHEEL_THRESHOLD = 6;

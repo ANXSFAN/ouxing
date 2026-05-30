@@ -253,6 +253,22 @@
   overscroll-behavior: contain;
 }
 
+/* On touch / small screens the JS page-flip feels laborious — fall back to a
+   plain, naturally-scrolling document so swiping has normal momentum. */
+@media (max-width: 768px) {
+  .snap-stack {
+    height: auto;
+    overflow-y: visible;
+    overscroll-behavior-y: auto;
+  }
+  .snap-stack > .snap-page {
+    position: static;
+    height: auto;
+    min-height: calc(100vh - 44px);
+    overflow: visible;
+  }
+}
+
 /* Hero spotlight — pure black backdrop with central radial glow, evokes LED light */
 .hero-spotlight {
   background-color: #000;
