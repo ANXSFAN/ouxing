@@ -1,11 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
-import { Package, Film } from "lucide-react";
+import { Package } from "lucide-react";
 import { PublicNavbar } from "@/components/layout/public-navbar";
 import { PublicFooter } from "@/components/layout/public-footer";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
-import { SnapStackController } from "@/components/motion/snap-stack-controller";
+import { siteConfig } from "@/lib/site-config";
 import { cn } from "@/lib/utils";
 
 type ContentJson = Record<string, { name?: string; description?: string }>;
@@ -36,80 +36,74 @@ export default async function HomePage() {
   const lineup = products.slice(7, 13);
 
   return (
-    <div className="snap-stack bg-white text-[#1d1d1f]">
-      <SnapStackController />
+    <div className="bg-white text-[#1d1d1f]">
       <PublicNavbar />
 
-      {/* ═════════════════ HERO — black spotlight + video placeholder ═════════════════ */}
-      <section className="snap-page hero-spotlight relative text-white overflow-hidden">
-        {/* Video placeholder — replace with <video autoPlay loop muted playsInline src="/hero.mp4" /> when ready */}
-        <div className="absolute inset-x-0 bottom-0 top-[40vh] sm:top-[42vh] z-0 flex items-center justify-center px-6 sm:px-12">
-          <div className="w-full max-w-3xl aspect-video rounded-3xl border border-dashed border-white/15 bg-white/[0.02] flex flex-col items-center justify-center gap-3">
-            <Film className="w-10 h-10 text-white/25" strokeWidth={1.25} />
-            <p className="text-white/35 text-[13px] tracking-wide">视频占位 · /public/hero.mp4</p>
-          </div>
-        </div>
-
-        {/* Wordmark */}
-        <div className="absolute inset-x-0 top-[14vh] sm:top-[16vh] text-center px-4 z-10">
-          <h1 className="headline-xl text-6xl sm:text-7xl md:text-[120px] lg:text-[140px] text-white">
+      {/* ═════════════════ HERO — black spotlight ═════════════════ */}
+      <section className="hero-spotlight relative text-white overflow-hidden min-h-[72vh] md:min-h-[80vh] flex flex-col items-center justify-center text-center px-4">
+        <div className="relative z-10 max-w-3xl mx-auto">
+          <h1 className="headline-xl text-6xl sm:text-7xl md:text-[110px] text-white">
             欧星 LED
           </h1>
+          <p className="mt-5 text-lg sm:text-xl md:text-2xl text-white/70 font-medium">
+            专业 LED 照明制造商，服务全球采购商
+          </p>
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+            <Link href="/products" className="appbtn appbtn-light">浏览产品</Link>
+            <Link href="/inquiry" className="applink applink-light">立即询价</Link>
+          </div>
         </div>
       </section>
 
-      {/* ═════════════════ SUB-HERO — second product spotlight (light) ═════════════════ */}
+      {/* ═════════════════ SUB-HERO — featured product spotlight (light) ═════════════════ */}
       {subHero && (
-        <section className="snap-page relative bg-[#e8e8ed] text-[#1d1d1f] overflow-hidden border-b border-black/5">
-          <div className="h-full flex flex-col">
-            <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8 pt-14 md:pt-20 text-center w-full">
-              <ScrollReveal variant="up">
-                <p className="text-base md:text-lg text-[#6e6e73] mb-3 font-medium">
-                  {getName(subHero.category?.content) || "本月精选"}
-                </p>
-              </ScrollReveal>
-              <ScrollReveal variant="up" delay={100}>
-                <h2 className="headline-xl text-5xl sm:text-6xl md:text-[80px] mb-4">
-                  {getName(subHero.content)}
-                </h2>
-              </ScrollReveal>
-              <ScrollReveal variant="up" delay={180}>
-                <p className="text-xl sm:text-2xl md:text-[28px] text-[#1d1d1f] font-medium mb-6 tracking-tight">
-                  专业品质<span className="text-[#86868b]">.</span> 触手可得<span className="text-[#86868b]">.</span>
-                </p>
-              </ScrollReveal>
-              <ScrollReveal variant="up" delay={260}>
-                <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
-                  <Link href={`/products/${subHero.id}`} className="applink">了解更多</Link>
-                  <Link href="/inquiry" className="applink">立即询价</Link>
-                </div>
-              </ScrollReveal>
-            </div>
-
-            <ScrollReveal variant="fade" delay={350}>
-              <div className="relative flex-1 min-h-[360px] sm:min-h-[440px] md:min-h-[520px] mt-6 md:mt-10">
-                {subHero.images[0] ? (
-                  <Image
-                    src={subHero.images[0].url}
-                    alt={getName(subHero.content)}
-                    fill
-                    className="object-contain object-bottom"
-                    unoptimized
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Package className="w-20 h-20 text-[#d2d2d7]" />
-                  </div>
-                )}
+        <section className="relative bg-[#e8e8ed] text-[#1d1d1f] overflow-hidden border-b border-black/5">
+          <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8 pt-16 md:pt-24 text-center w-full">
+            <ScrollReveal variant="up">
+              <p className="text-base md:text-lg text-[#6e6e73] mb-3 font-medium">
+                {getName(subHero.category?.content) || "本月精选"}
+              </p>
+            </ScrollReveal>
+            <ScrollReveal variant="up" delay={100}>
+              <h2 className="headline-xl text-5xl sm:text-6xl md:text-[76px] mb-4">
+                {getName(subHero.content)}
+              </h2>
+            </ScrollReveal>
+            <ScrollReveal variant="up" delay={180}>
+              <p className="text-xl sm:text-2xl md:text-[26px] text-[#1d1d1f] font-medium mb-6">
+                专业品质，触手可得
+              </p>
+            </ScrollReveal>
+            <ScrollReveal variant="up" delay={260}>
+              <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
+                <Link href={`/products/${subHero.id}`} className="applink">了解更多</Link>
+                <Link href="/inquiry" className="applink">立即询价</Link>
               </div>
             </ScrollReveal>
           </div>
+
+          <ScrollReveal variant="fade" delay={350}>
+            <div className="relative h-[360px] sm:h-[440px] md:h-[520px] mt-6 md:mt-10">
+              {subHero.images[0] ? (
+                <Image
+                  src={subHero.images[0].url}
+                  alt={getName(subHero.content)}
+                  fill
+                  className="object-contain object-bottom"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Package className="w-20 h-20 text-[#d2d2d7]" />
+                </div>
+              )}
+            </div>
+          </ScrollReveal>
         </section>
       )}
 
       {/* ═════════════════ BIG PRODUCT BENTO (2 cols) ═════════════════ */}
       {bigBento.length >= 2 && (
-        <section className="snap-page bg-white px-2 sm:px-3 py-3">
+        <section className="bg-white px-2 sm:px-3 py-3">
           <div className="w-full max-w-[1440px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-3">
             <ScrollReveal variant="rise">
               <ProductBigTile theme="light" product={bigBento[0]} />
@@ -123,7 +117,7 @@ export default async function HomePage() {
 
       {/* ═════════════════ SMALL PRODUCT BENTO (4 cols) ═════════════════ */}
       {smallBento.length > 0 && (
-        <section className="snap-page bg-white px-2 sm:px-3 py-3">
+        <section className="bg-white px-2 sm:px-3 py-3">
           <div className="w-full max-w-[1440px] mx-auto grid grid-cols-2 lg:grid-cols-4 gap-3">
             {smallBento.map((p, i) => (
               <ScrollReveal key={p.id} variant="rise" delay={i * 100}>
@@ -139,16 +133,14 @@ export default async function HomePage() {
 
       {/* ═════════════════ LINEUP — product grid ═════════════════ */}
       {lineup.length > 0 && (
-        <section className="snap-page bg-white py-20 md:py-28">
+        <section className="bg-white py-20 md:py-28">
           <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
             <ScrollReveal variant="up">
               <p className="text-base text-[#86868b] text-center mb-3">更多精选</p>
             </ScrollReveal>
             <ScrollReveal variant="up" delay={80}>
               <h2 className="headline-lg text-4xl md:text-6xl text-center mb-4">
-                熟悉的型号<span className="text-[#86868b]">. </span>
-                <br className="md:hidden" />
-                <span className="text-[#86868b]">即刻询价。</span>
+                熟悉的型号，即刻询价
               </h2>
             </ScrollReveal>
             <ScrollReveal variant="up" delay={160}>
@@ -161,14 +153,13 @@ export default async function HomePage() {
               {lineup.map((p, i) => (
                 <ScrollReveal key={p.id} variant="rise" delay={(i % 3) * 120}>
                   <Link href={`/products/${p.id}`} className="group block text-center">
-                    <div className="relative aspect-square bg-[#e8e8ed] rounded-3xl overflow-hidden mb-5">
+                    <div className="relative aspect-square bg-[#f5f5f7] border border-black/5 rounded-3xl overflow-hidden mb-5">
                       {p.images[0] ? (
                         <Image
                           src={p.images[0].url}
                           alt={getName(p.content)}
                           fill
-                          className="object-contain p-8 transition-transform duration-700 group-hover:scale-105"
-                          unoptimized
+                          className="object-contain p-6 transition-transform duration-700 group-hover:scale-105"
                         />
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center">
@@ -192,30 +183,30 @@ export default async function HomePage() {
       )}
 
       {/* ═════════════════ WHY OUXING (dark band) ═════════════════ */}
-      <section className="snap-page bg-[#1d1d1f] text-white py-20 md:py-28 text-center">
+      <section className="bg-[#1d1d1f] text-white py-20 md:py-28 text-center">
         <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollReveal variant="up">
-            <p className="text-[#86868b] text-base mb-3">为什么选择欧星</p>
+            <p className="text-[#a1a1a6] text-base mb-3">为什么选择欧星</p>
           </ScrollReveal>
           <ScrollReveal variant="up" delay={80}>
             <h2 className="headline-xl text-4xl sm:text-6xl md:text-7xl mb-12">
-              专业<span className="text-[#86868b]">.</span> 可靠<span className="text-[#86868b]">.</span>
-              <br />
-              出口 50+ 国家<span className="text-[#86868b]">.</span>
+              专业可靠，
+              <br className="md:hidden" />
+              出口 {siteConfig.stats.exportCountries} 国家
             </h2>
           </ScrollReveal>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-y-12 mt-16">
             {[
-              { v: "10+", l: "年制造经验" },
-              { v: "500+", l: "产品 SKU" },
-              { v: "50+", l: "出口国家" },
-              { v: "50K", l: "小时寿命" },
+              { v: siteConfig.stats.foundedYear, l: "成立年份" },
+              { v: siteConfig.stats.skuCount, l: "产品 SKU" },
+              { v: siteConfig.stats.exportCountries, l: "出口国家" },
+              { v: siteConfig.stats.teamSize, l: "团队成员" },
             ].map((s, i) => (
               <ScrollReveal key={s.l} variant="up" delay={i * 80}>
                 <div>
-                  <div className="headline-xl text-5xl md:text-6xl text-white">{s.v}</div>
-                  <p className="text-sm text-[#86868b] mt-2">{s.l}</p>
+                  <div className="headline-xl text-5xl md:text-6xl text-white tabular-nums">{s.v}</div>
+                  <p className="text-sm text-[#a1a1a6] mt-2">{s.l}</p>
                 </div>
               </ScrollReveal>
             ))}
@@ -231,7 +222,7 @@ export default async function HomePage() {
       </section>
 
       {/* ═════════════════ FINAL CTA ═════════════════ */}
-      <section className="snap-page bg-white py-20 md:py-28 text-center">
+      <section className="bg-white py-20 md:py-28 text-center">
         <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollReveal variant="up">
             <h2 className="headline-xl text-4xl md:text-6xl mb-4">
@@ -239,7 +230,7 @@ export default async function HomePage() {
             </h2>
           </ScrollReveal>
           <ScrollReveal variant="up" delay={80}>
-            <p className="text-xl md:text-2xl text-[#86868b] mb-8">
+            <p className="text-xl md:text-2xl text-[#6e6e73] mb-8">
               提交需求清单，我们将于 1–2 个工作日内回复方案与报价。
             </p>
           </ScrollReveal>
@@ -296,7 +287,6 @@ function ProductBigTile({ theme, product }: { theme: "light" | "dark"; product: 
             alt={name}
             fill
             className="apple-tile-img object-contain p-6 sm:p-10"
-            unoptimized
           />
         </div>
       ) : (
@@ -338,7 +328,6 @@ function ProductSmallTile({ product, theme }: { product: ProductPayload; theme: 
             alt={name}
             fill
             className="apple-tile-img object-contain p-5"
-            unoptimized
           />
         </div>
       ) : (

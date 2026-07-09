@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const inquirySchema = z.object({
+  name: z.string().trim().min(1, "请填写联系人姓名"),
+  email: z.email("请填写有效的邮箱地址"),
   company: z.string().optional(),
   phone: z.string().optional(),
   message: z.string().optional(),

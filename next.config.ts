@@ -13,7 +13,6 @@ const nextConfig: NextConfig = {
     remotePatterns: supabaseHost
       ? [{ protocol: "https", hostname: supabaseHost, pathname: "/storage/v1/object/public/**" }]
       : [],
-    unoptimized: true,
   },
   serverExternalPackages: ["@react-pdf/renderer", "sharp"],
 };

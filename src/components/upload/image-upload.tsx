@@ -83,7 +83,6 @@ export function ImageUpload({
                 alt={img.fileName}
                 fill
                 className="object-contain"
-                unoptimized
               />
               <button
                 type="button"

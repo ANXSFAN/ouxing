@@ -13,7 +13,6 @@ import {
   getCartItems, setCartItems, removeFromCart, clearCart, addToCart, cartKey,
   type InquiryCartItem,
 } from "@/lib/inquiry-cart";
-import { cn } from "@/lib/utils";
 
 type ContentJson = Record<string, { name?: string }>;
 function getName(c: unknown) { const v = c as ContentJson | null; return v?.zh?.name || v?.en?.name || ""; }
@@ -27,7 +26,7 @@ function InquiryContent() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<InquiryCartItem[]>([]);
-  const [form, setForm] = useState({ company: "", phone: "", message: "" });
+  const [form, setForm] = useState({ name: "", email: "", company: "", phone: "", message: "" });
 
   useEffect(() => {
     setItems(getCartItems());
@@ -111,6 +110,14 @@ function InquiryContent() {
       toast.error("请至少添加一个产品或填写留言");
       return;
     }
+    if (!form.name.trim()) {
+      toast.error("请填写联系人姓名");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      toast.error("请填写有效的邮箱地址");
+      return;
+    }
     setLoading(true);
     const payload = {
       ...form,
@@ -148,17 +155,17 @@ function InquiryContent() {
             <CheckCircle2 className="w-8 h-8 text-[#1d1d1f]" strokeWidth={1.5} />
           </div>
           <h1 className="headline-xl text-3xl md:text-5xl text-[#1d1d1f] mb-3">
-            询价已提交<span className="text-[#86868b]">.</span>
+            询价已提交
           </h1>
           <p className="text-[15px] text-[#86868b] mb-10 leading-relaxed">
-            我们会在 <span className="text-[#1d1d1f] font-medium">1–2 个工作日</span> 内回复您的询价单。
+            我们会在 <span className="text-[#1d1d1f] font-medium">1–2 个工作日</span> 内通过邮箱回复您的询价单。
           </p>
           <div className="flex flex-wrap gap-x-7 gap-y-3 justify-center items-center">
             <button
               type="button"
               onClick={() => {
                 setSubmitted(false);
-                setForm({ company: "", phone: "", message: "" });
+                setForm({ name: "", email: "", company: "", phone: "", message: "" });
                 setItems([]);
               }}
               className="appbtn"
@@ -179,7 +186,7 @@ function InquiryContent() {
         <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-base md:text-lg text-[#86868b] mb-3 font-medium">询价单</p>
           <h1 className="headline-xl text-4xl sm:text-6xl md:text-[72px] mb-4">
-            告诉我们您的需求<span className="text-[#86868b]">.</span>
+            告诉我们您的需求
           </h1>
           <p className="text-[15px] md:text-[17px] text-[#86868b]">
             {items.length > 0
@@ -230,7 +237,7 @@ function InquiryContent() {
                         className="w-20 h-20 bg-white rounded-2xl relative overflow-hidden shrink-0"
                       >
                         {item.imageUrl ? (
-                          <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-2" unoptimized />
+                          <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-2" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <Package className="w-6 h-6 text-[#d2d2d7]" />
@@ -313,13 +320,34 @@ function InquiryContent() {
           {/* ── Contact info ── */}
           <div className="bg-[#f5f5f7] rounded-3xl overflow-hidden">
             <div className="px-6 py-5">
-              <h2 className="headline-lg text-[17px] text-[#1d1d1f] flex items-center gap-2">
-                补充信息
-                <span className="text-[12px] font-normal text-[#86868b]">（选填）</span>
-              </h2>
+              <h2 className="headline-lg text-[17px] text-[#1d1d1f]">联系方式</h2>
             </div>
             <div className="px-6 pb-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[13px] text-[#86868b] mb-2">
+                    联系人 <span className="text-[#1d1d1f]">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className={appleInputCls}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[13px] text-[#86868b] mb-2">
+                    邮箱 <span className="text-[#1d1d1f]">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className={appleInputCls}
+                  />
+                </div>
                 <div>
                   <label className="block text-[13px] text-[#86868b] mb-2">公司名称</label>
                   <input
@@ -332,7 +360,7 @@ function InquiryContent() {
                 <div>
                   <label className="block text-[13px] text-[#86868b] mb-2">联系电话</label>
                   <input
-                    type="text"
+                    type="tel"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     className={appleInputCls}
@@ -363,7 +391,7 @@ function InquiryContent() {
               {loading ? "提交中..." : `提交询价${items.length > 0 ? ` (${items.length} 件)` : ""}`}
             </button>
             <p className="text-[12px] text-[#86868b] mt-4">
-              提交后您将收到自动确认邮件，销售工程师将在 1–2 个工作日内回复
+              销售工程师将在 1–2 个工作日内通过邮箱回复您
             </p>
           </div>
         </form>

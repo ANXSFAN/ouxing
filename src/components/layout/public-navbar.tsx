@@ -15,7 +15,7 @@ const navLinks = [
   { href: "/products?category=tube", label: "灯管" },
   { href: "/products?category=highbay", label: "工矿灯" },
   { href: "/about", label: "关于" },
-  { href: "/inquiry", label: "支持" },
+  { href: "/inquiry", label: "询价" },
 ];
 
 export function PublicNavbar() {

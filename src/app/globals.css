@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans), -apple-system, "SF Pro Display", "SF Pro Text",
+  --font-sans: var(--font-sans), var(--font-sans-sc), -apple-system,
     "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Menlo", monospace;
 
@@ -137,26 +137,22 @@
   html {
     @apply font-sans;
   }
-  /* Apple-style headline kerning */
-  h1, h2, h3 {
-    font-feature-settings: "ss01", "cv11";
-  }
 }
 
 /* =====================================================================
    Apple-style design utilities
    ===================================================================== */
 
-/* Headline tracking — Apple uses very tight tracking on big type */
+/* Headline styles — no negative tracking: CJK glyphs must not be squeezed */
 .headline-xl {
   font-weight: 600;
-  letter-spacing: -0.022em;
-  line-height: 1.05;
+  letter-spacing: 0;
+  line-height: 1.12;
 }
 .headline-lg {
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.08;
+  letter-spacing: 0;
+  line-height: 1.16;
 }
 
 /* Monochrome "learn more ›" link — B2B restrained, no brand blue */
@@ -224,51 +220,6 @@
 }
 .appbtn-light:hover { background: #f5f5f7; }
 
-/* Sticky stack — each section pins at the top while the next slides up to cover it.
-   We deliberately do NOT use scroll-snap here — mandatory + sticky together
-   makes short scrolls snap back to the same page (feels like the page is glued).
-   A separate <SnapStackController> wires up wheel/touch listeners and jumps
-   one page per gesture programmatically, with smooth scroll. */
-.snap-stack {
-  height: 100vh;
-  overflow-y: scroll;
-  overflow-x: hidden;
-  scroll-behavior: smooth;
-  overscroll-behavior-y: contain;
-  scrollbar-gutter: stable;
-}
-.snap-stack > .snap-page {
-  position: sticky;
-  top: 44px; /* below the 44px sticky navbar */
-  height: calc(100vh - 44px);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  overflow-y: auto;
-  overflow-x: hidden;
-  /* Each section is its own scroll container so sections with tall content
-     (mobile bento on small screens, the product grid) can scroll internally;
-     the SnapStackController only triggers page-flip once the section is at
-     its top/bottom edge. */
-  overscroll-behavior: contain;
-}
-
-/* On touch / small screens the JS page-flip feels laborious — fall back to a
-   plain, naturally-scrolling document so swiping has normal momentum. */
-@media (max-width: 768px) {
-  .snap-stack {
-    height: auto;
-    overflow-y: visible;
-    overscroll-behavior-y: auto;
-  }
-  .snap-stack > .snap-page {
-    position: static;
-    height: auto;
-    min-height: calc(100vh - 44px);
-    overflow: visible;
-  }
-}
-
 /* Hero spotlight — pure black backdrop with central radial glow, evokes LED light */
 .hero-spotlight {
   background-color: #000;
@@ -285,15 +236,19 @@
 }
 
 
-/* Apple tile — soft shadow on hover, hover scales inner image */
+/* Apple tile — subtle border + soft resting shadow, deeper on hover */
 .apple-tile {
   border-radius: 24px;
   overflow: hidden;
   position: relative;
-  transition: transform 360ms cubic-bezier(0.28, 0.11, 0.32, 1);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform 360ms cubic-bezier(0.28, 0.11, 0.32, 1),
+              box-shadow 360ms cubic-bezier(0.28, 0.11, 0.32, 1);
 }
 .apple-tile:hover {
   transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.09);
 }
 .apple-tile .apple-tile-img {
   transition: transform 600ms cubic-bezier(0.28, 0.11, 0.32, 1);

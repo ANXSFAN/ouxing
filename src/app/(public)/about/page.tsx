@@ -1,9 +1,17 @@
 import {
   Factory, Award, Users, Globe, Truck, ShieldCheck, Headphones, Zap,
 } from "lucide-react";
+import type { Metadata } from "next";
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import Link from "next/link";
 import Image from "next/image";
+import { siteConfig } from "@/lib/site-config";
+
+export const metadata: Metadata = {
+  title: "关于我们",
+  description:
+    "欧星是一家专注于 LED 照明产品研发与制造的企业，产品通过 CE、UL、RoHS 等多项国际认证，远销 50 多个国家和地区。",
+};
 
 export default function AboutPage() {
   return (
@@ -22,11 +30,10 @@ export default function AboutPage() {
             </h1>
           </ScrollReveal>
           <ScrollReveal variant="up" delay={180}>
-            <p className="text-xl sm:text-2xl md:text-[28px] text-[#1d1d1f] font-medium tracking-tight max-w-3xl mx-auto">
-              十年磨一剑<span className="text-[#86868b]">.</span>
+            <p className="text-xl sm:text-2xl md:text-[28px] text-[#1d1d1f] font-medium max-w-3xl mx-auto">
+              十年磨一剑，
               <br className="md:hidden" />
-              <span className="hidden md:inline"> </span>
-              做经得起时间检验的 LED 产品<span className="text-[#86868b]">.</span>
+              做经得起时间检验的 LED 产品
             </p>
           </ScrollReveal>
           <ScrollReveal variant="up" delay={260}>
@@ -43,7 +50,7 @@ export default function AboutPage() {
         <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollReveal variant="fade">
             <div className="aspect-[16/9] bg-[#e8e8ed] rounded-3xl overflow-hidden relative">
-              <Image src="/hero.jpg" alt="欧星工厂" fill className="object-cover" unoptimized />
+              <Image src="/hero.jpg" alt="欧星工厂" fill className="object-cover" />
             </div>
           </ScrollReveal>
 
@@ -65,16 +72,16 @@ export default function AboutPage() {
           </ScrollReveal>
           <ScrollReveal variant="up" delay={80}>
             <h2 className="headline-xl text-4xl sm:text-6xl md:text-7xl mb-14">
-              十年深耕<span className="text-[#86868b]">.</span>
+              十年深耕
             </h2>
           </ScrollReveal>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-y-12">
             {[
-              { v: "2015", l: "成立年份" },
-              { v: "500+", l: "产品 SKU" },
-              { v: "50+", l: "出口国家" },
-              { v: "200+", l: "团队成员" },
+              { v: siteConfig.stats.foundedYear, l: "成立年份" },
+              { v: siteConfig.stats.skuCount, l: "产品 SKU" },
+              { v: siteConfig.stats.exportCountries, l: "出口国家" },
+              { v: siteConfig.stats.teamSize, l: "团队成员" },
             ].map((s, i) => (
               <ScrollReveal key={s.l} variant="up" delay={i * 80}>
                 <div>
@@ -95,9 +102,9 @@ export default function AboutPage() {
           </ScrollReveal>
           <ScrollReveal variant="up" delay={80}>
             <h2 className="headline-lg text-4xl md:text-6xl text-center mb-4">
-              从光学到出厂<span className="text-[#86868b]">.</span>
+              从光学到出厂，
               <br className="md:hidden" />
-              <span className="text-[#86868b]"> 自主把控.</span>
+              <span className="text-[#6e6e73]">全程自主把控</span>
             </h2>
           </ScrollReveal>
 
@@ -128,7 +135,7 @@ export default function AboutPage() {
           </ScrollReveal>
           <ScrollReveal variant="up" delay={80}>
             <h2 className="headline-lg text-4xl md:text-6xl text-center mb-14">
-              专业<span className="text-[#86868b]">.</span> 可靠<span className="text-[#86868b]">.</span> 及时<span className="text-[#86868b]">.</span>
+              专业 · 可靠 · 及时
             </h2>
           </ScrollReveal>
 
@@ -156,7 +163,7 @@ export default function AboutPage() {
         <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollReveal variant="up">
             <h2 className="headline-xl text-4xl md:text-6xl text-white mb-4">
-              找一个可靠的 LED 供应商<span className="text-[#86868b]">.</span>
+              找一个可靠的 LED 供应商
             </h2>
           </ScrollReveal>
           <ScrollReveal variant="up" delay={80}>

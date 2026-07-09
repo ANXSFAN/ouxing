@@ -398,19 +398,18 @@ function ProductCard({
       href={`/products/${product.id}`}
       className="group block text-center"
     >
-      <div className="relative aspect-square bg-[#f5f5f7] rounded-3xl overflow-hidden mb-5">
+      <div className="relative aspect-square bg-[#f5f5f7] border border-black/5 rounded-3xl overflow-hidden mb-5">
         {imageUrl ? (
           <Image
             src={imageUrl}
             alt={name}
             fill
             className="object-contain p-8 transition-transform duration-700 group-hover:scale-105"
-            unoptimized
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-[#86868b]">
             <ImageIcon className="w-10 h-10" />
-            <span className="text-[10px] uppercase mt-1">无图</span>
+            <span className="text-[10px] mt-1">暂无图片</span>
           </div>
         )}
 

@@ -236,7 +236,7 @@ export default function InquiryDetailPage() {
                       >
                         <div className="w-14 h-14 rounded-lg bg-white border border-slate-100 relative overflow-hidden shrink-0">
                           {imgUrl ? (
-                            <Image src={imgUrl} alt={pName} fill className="object-contain p-1" unoptimized />
+                            <Image src={imgUrl} alt={pName} fill className="object-contain p-1" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-slate-300 text-xs">无图</div>
                           )}

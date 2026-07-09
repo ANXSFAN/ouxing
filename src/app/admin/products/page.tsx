@@ -202,7 +202,6 @@ export default function ProductsPage() {
                             width={48}
                             height={48}
                             className="w-full h-full object-contain"
-                            unoptimized
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
