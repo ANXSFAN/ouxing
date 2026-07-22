@@ -16,7 +16,7 @@ export default function AdminLayout({
 
   return (
     <SessionProvider>
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-[#f5f6f5]">
         <AdminSidebar
           collapsed={collapsed}
           onToggle={() => setCollapsed(!collapsed)}
@@ -30,7 +30,7 @@ export default function AdminLayout({
           )}
         >
           <AdminTopbar onMenuClick={() => setMobileOpen(true)} />
-          <main className="p-4 md:p-6">{children}</main>
+          <main className="mx-auto max-w-[1480px] p-4 md:p-7">{children}</main>
         </div>
       </div>
     </SessionProvider>

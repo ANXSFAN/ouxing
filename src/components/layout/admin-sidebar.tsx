@@ -12,7 +12,7 @@ import {
   FileText,
   PackageCheck,
   ChevronLeft,
-  Lightbulb,
+  PanelsTopLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -48,19 +48,19 @@ export function AdminSidebar({ collapsed, onToggle, mobileOpen, onMobileClose }:
     )}
     <aside
       className={cn(
-        "fixed left-0 top-0 z-50 flex h-screen w-60 flex-col border-r border-slate-800 bg-slate-900 transition-transform duration-200 md:z-40 md:translate-x-0 md:transition-[width] md:duration-300",
+        "fixed left-0 top-0 z-50 flex h-screen w-60 flex-col border-r border-slate-200 bg-white transition-transform duration-200 md:z-40 md:translate-x-0 md:transition-[width] md:duration-300",
         mobileOpen ? "translate-x-0" : "-translate-x-full",
         collapsed ? "md:w-16" : "md:w-60"
       )}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center px-4 border-b border-slate-800">
+      <div className="h-16 flex items-center px-4 border-b border-slate-200">
         <Link href="/admin" className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Lightbulb className="w-5 h-5 text-amber-500" />
+          <div className="w-8 h-8 bg-[#eaf0f3] rounded-md flex items-center justify-center flex-shrink-0">
+            <PanelsTopLeft className="w-5 h-5 text-[#294457]" />
           </div>
           {!collapsed && (
-            <span className="font-bold text-lg text-white">欧星</span>
+            <span className="font-bold text-base text-slate-900">FactorLED 后台</span>
           )}
         </Link>
       </div>
@@ -80,8 +80,8 @@ export function AdminSidebar({ collapsed, onToggle, mobileOpen, onMobileClose }:
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-amber-500/10 text-amber-500"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+                  ? "bg-[#eaf0f3] text-[#294457]"
+                  : "text-slate-600 hover:text-slate-950 hover:bg-slate-100"
               )}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -92,12 +92,12 @@ export function AdminSidebar({ collapsed, onToggle, mobileOpen, onMobileClose }:
       </nav>
 
       {/* Collapse button */}
-      <div className="hidden p-3 border-t border-slate-800 md:block">
+      <div className="hidden p-3 border-t border-slate-200 md:block">
         <Button
           variant="ghost"
           size="sm"
           onClick={onToggle}
-          className="w-full text-slate-400 hover:text-white hover:bg-slate-800"
+          className="w-full text-slate-500 hover:text-slate-950 hover:bg-slate-100"
         >
           <ChevronLeft
             className={cn(

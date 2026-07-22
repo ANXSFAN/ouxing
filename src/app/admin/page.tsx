@@ -55,40 +55,40 @@ export default function AdminDashboard() {
       value: stats?.productCount ?? "-",
       icon: Package,
       href: "/admin/products",
-      color: "text-blue-600",
-      bg: "bg-blue-50",
+      color: "text-[#294457]",
+      bg: "bg-[#eaf0f3]",
     },
     {
       label: "产品分类",
       value: stats?.categoryCount ?? "-",
       icon: FolderTree,
       href: "/admin/categories",
-      color: "text-green-600",
-      bg: "bg-green-50",
+      color: "text-[#294457]",
+      bg: "bg-[#eaf0f3]",
     },
     {
       label: "待处理询价",
       value: stats?.pendingInquiries ?? "-",
       icon: MessageSquare,
       href: "/admin/inquiries",
-      color: "text-amber-600",
-      bg: "bg-amber-50",
+      color: "text-[#294457]",
+      bg: "bg-[#eaf0f3]",
     },
     {
       label: "报价单总数",
       value: stats?.quoteCount ?? "-",
       icon: FileText,
       href: "/admin/quotes",
-      color: "text-purple-600",
-      bg: "bg-purple-50",
+      color: "text-[#294457]",
+      bg: "bg-[#eaf0f3]",
     },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">仪表盘</h1>
-        <p className="text-slate-500 mt-1">欢迎回来，查看系统概览</p>
+        <h1 className="text-2xl font-bold text-slate-950 md:text-3xl">仪表盘</h1>
+        <p className="text-slate-500 mt-2">集中查看产品、询盘与报价进度</p>
       </div>
 
       {error && (
@@ -106,7 +106,7 @@ export default function AdminDashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card) => (
-          <Card key={card.label} className="transition-shadow hover:shadow-sm">
+          <Card key={card.label} className="rounded-lg border-slate-200 shadow-none transition-shadow hover:shadow-sm">
             <Link href={card.href} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 rounded-lg">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -118,7 +118,7 @@ export default function AdminDashboard() {
                     {card.value}
                   </p>
                 </div>
-                <div className={`p-3 rounded-xl ${card.bg}`}>
+                <div className={`p-3 rounded-lg ${card.bg}`}>
                   <card.icon className={`w-6 h-6 ${card.color}`} />
                 </div>
               </div>
@@ -129,7 +129,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Recent Inquiries */}
-      <Card>
+      <Card className="rounded-lg border-slate-200 shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Clock className="w-5 h-5" />

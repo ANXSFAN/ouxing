@@ -16,7 +16,7 @@ export function AdminTopbar({ onMenuClick }: { onMenuClick: () => void }) {
   const { data: session } = useSession();
 
   return (
-    <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6">
+    <header className="sticky top-0 z-30 h-16 border-b border-slate-200 bg-white/95 backdrop-blur flex items-center justify-between px-4 md:px-6">
       <div className="flex items-center gap-4">
         <button
           type="button"
@@ -39,7 +39,7 @@ export function AdminTopbar({ onMenuClick }: { onMenuClick: () => void }) {
       <DropdownMenu>
         <DropdownMenuTrigger className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer outline-none">
           <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-amber-500/10 text-amber-600 text-sm font-medium">
+            <AvatarFallback className="bg-[#eaf0f3] text-[#294457] text-sm font-medium">
               {session?.user?.name?.[0] || "A"}
             </AvatarFallback>
           </Avatar>
