@@ -107,6 +107,7 @@ export default function EditQuotePage() {
   const quoteId = params.id as string;
 
   const [loading, setLoading] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -130,6 +131,15 @@ export default function EditQuotePage() {
   const [discountMode, setDiscountMode] = useState<"fixed" | "percent">("fixed");
   const [taxMode, setTaxMode] = useState<"fixed" | "percent">("fixed");
   const [items, setItems] = useState<QuoteItem[]>([]);
+
+  useEffect(() => {
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!dirty) return;
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [dirty]);
 
   // Load existing quote data
   useEffect(() => {
@@ -192,6 +202,8 @@ export default function EditQuotePage() {
 
   useEffect(() => {
     if (productDialogOpen) searchProducts();
+    // searchProducts is intentionally invoked only when the dialog opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productDialogOpen]);
 
   const addUnit = (unit: SelectableUnit) => {
@@ -255,6 +267,7 @@ export default function EditQuotePage() {
     });
 
     if (res.ok) {
+      setDirty(false);
       toast.success("报价单已更新");
       router.push(`/admin/quotes/${quoteId}`);
     } else {
@@ -273,11 +286,11 @@ export default function EditQuotePage() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="flex items-center justify-between">
+    <form onSubmit={handleSubmit} onChange={() => setDirty(true)} className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
-            <Link href={`/admin/quotes/${quoteId}`}>
+            <Link href={`/admin/quotes/${quoteId}`} onClick={(event) => { if (dirty && !window.confirm("修改尚未保存，确定离开吗？")) event.preventDefault(); }}>
               <ArrowLeft className="w-4 h-4 mr-1" />
               返回
             </Link>
@@ -289,6 +302,8 @@ export default function EditQuotePage() {
             )}
           </div>
         </div>
+        <div className="flex items-center gap-3 self-end sm:self-auto">
+        {dirty && <span className="text-sm text-amber-700">有未保存的修改</span>}
         <Button type="submit" disabled={loading}>
           {loading ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -297,6 +312,7 @@ export default function EditQuotePage() {
           )}
           {loading ? "保存中..." : "保存修改"}
         </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -376,7 +392,7 @@ export default function EditQuotePage() {
           <CardContent>
             {items.length === 0 ? (
               <p className="text-sm text-slate-400 text-center py-8">
-                点击"添加产品"选择要报价的产品
+                点击“添加产品”选择要报价的产品
               </p>
             ) : (
               <Table className="table-fixed">

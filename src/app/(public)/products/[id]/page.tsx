@@ -12,7 +12,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const product = await prisma.product.findUnique({
-    where: { id },
+    where: { id, isActive: true },
     include: {
       images: { where: { variantId: null }, orderBy: { sortOrder: "asc" }, take: 1 },
     },

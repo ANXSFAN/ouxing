@@ -8,8 +8,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const session = await auth();
   const product = await prisma.product.findUnique({
-    where: { id },
+    where: { id, ...(session ? {} : { isActive: true }) },
     include: {
       category: true,
       images: { where: { variantId: null }, orderBy: { sortOrder: "asc" } },
@@ -35,7 +36,8 @@ export async function PUT(
   const { id } = await params;
   const body = await request.json();
 
-  const product = await prisma.product.update({
+  const product = await prisma.$transaction(async (tx) => {
+    const updatedProduct = await tx.product.update({
     where: { id },
     data: {
       slug: body.slug,
@@ -47,14 +49,14 @@ export async function PUT(
       isFeatured: body.isFeatured,
       categoryId: body.categoryId || null,
     },
-  });
+    });
 
   // Update product-level images (variantId IS NULL). Variant-level images are
   // managed below alongside their variant — cascade deletes when a variant is removed.
   if (body.images !== undefined) {
-    await prisma.productImage.deleteMany({ where: { productId: id, variantId: null } });
+    await tx.productImage.deleteMany({ where: { productId: id, variantId: null } });
     if (body.images?.length) {
-      await prisma.productImage.createMany({
+      await tx.productImage.createMany({
         data: body.images.map(
           (img: { url: string; fileName?: string }, index: number) => ({
             productId: id, url: img.url, alt: img.fileName || "",
@@ -67,9 +69,9 @@ export async function PUT(
 
   // Update documents
   if (body.documents !== undefined) {
-    await prisma.productDocument.deleteMany({ where: { productId: id } });
+    await tx.productDocument.deleteMany({ where: { productId: id } });
     if (body.documents?.length) {
-      await prisma.productDocument.createMany({
+      await tx.productDocument.createMany({
         data: body.documents.map(
           (doc: { url: string; fileName: string; fileSize: number; mimeType: string; name?: string; docType?: string }) => ({
             productId: id, name: doc.name || doc.fileName, fileName: doc.fileName,
@@ -81,28 +83,39 @@ export async function PUT(
     }
   }
 
-  // Update variants (and their own images). Deleting a variant cascades to its images.
+  // Preserve existing variant IDs so quote and inquiry references remain stable.
   if (body.variants !== undefined) {
-    await prisma.productVariant.deleteMany({ where: { productId: id } });
+    const retainedVariantIds: string[] = [];
     if (body.variants?.length) {
       for (let i = 0; i < body.variants.length; i++) {
         const v = body.variants[i] as {
+          id?: string;
           sku: string; price?: number | null; specs?: Record<string, string> | null;
           sortOrder?: number; isActive?: boolean;
           images?: { url: string; fileName?: string }[];
         };
-        const variant = await prisma.productVariant.create({
-          data: {
+        const variantData = {
+          sku: v.sku,
+          price: v.price ?? null,
+          specs: v.specs || {},
+          sortOrder: v.sortOrder ?? i,
+          isActive: v.isActive ?? true,
+        };
+        const variant = v.id
+          ? await tx.productVariant.update({
+              where: { id: v.id, productId: id },
+              data: variantData,
+            })
+          : await tx.productVariant.create({
+              data: {
             productId: id,
-            sku: v.sku,
-            price: v.price ?? null,
-            specs: v.specs || {},
-            sortOrder: v.sortOrder ?? i,
-            isActive: v.isActive ?? true,
-          },
-        });
+                ...variantData,
+              },
+            });
+        retainedVariantIds.push(variant.id);
+        await tx.productImage.deleteMany({ where: { productId: id, variantId: variant.id } });
         if (v.images?.length) {
-          await prisma.productImage.createMany({
+          await tx.productImage.createMany({
             data: v.images.map((img, idx) => ({
               productId: id,
               variantId: variant.id,
@@ -111,17 +124,24 @@ export async function PUT(
               sortOrder: idx,
               isPrimary: false,
             })),
-          });
+          },
+          );
         }
       }
     }
+    await tx.productVariant.deleteMany({
+      where: {
+        productId: id,
+        ...(retainedVariantIds.length ? { id: { notIn: retainedVariantIds } } : {}),
+      },
+    });
   }
 
   // Update certificates
   if (body.certificates !== undefined) {
-    await prisma.productCertificate.deleteMany({ where: { productId: id } });
+    await tx.productCertificate.deleteMany({ where: { productId: id } });
     if (body.certificates?.length) {
-      await prisma.productCertificate.createMany({
+      await tx.productCertificate.createMany({
         data: body.certificates.map(
           (cert: { url: string; fileName: string; fileSize: number; mimeType: string; name?: string; certType?: string }) => ({
             productId: id, name: cert.name || cert.fileName, certType: cert.certType || "其他",
@@ -131,6 +151,9 @@ export async function PUT(
       });
     }
   }
+
+    return updatedProduct;
+  });
 
   return NextResponse.json(product);
 }

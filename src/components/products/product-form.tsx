@@ -31,7 +31,7 @@ interface AttributeDef {
 
 interface UploadedImage { url: string; fileName: string }
 interface UploadedFile { url: string; fileName: string; fileSize: number; mimeType: string; name?: string; docType?: string; certType?: string }
-interface VariantRow { sku: string; price: string; specs: Record<string, string>; isActive: boolean; images: UploadedImage[] }
+interface VariantRow { id?: string; sku: string; price: string; specs: Record<string, string>; isActive: boolean; images: UploadedImage[] }
 
 interface ProductFormProps {
   initialData?: Record<string, unknown>;
@@ -82,6 +82,7 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
   const [certificates, setCertificates] = useState<UploadedFile[]>([]);
   const [variants, setVariants] = useState<VariantRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
   // Form state
   const [slug, setSlug] = useState("");
@@ -106,6 +107,8 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
 
   useEffect(() => {
     if (initialData) {
+      // The edit page mounts this form only after its initial record is loaded.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSlug((initialData.slug as string) || "");
       setModelNumber((initialData.modelNumber as string) || "");
       setPrice(initialData.price ? String(initialData.price) : "");
@@ -141,9 +144,10 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
       }
       if (initialData.variants) {
         setVariants((initialData.variants as {
-          sku: string; price: unknown; specs: Record<string, string>; isActive: boolean;
+          id: string; sku: string; price: unknown; specs: Record<string, string>; isActive: boolean;
           images?: { url: string; alt?: string }[];
         }[]).map((v) => ({
+          id: v.id,
           sku: v.sku,
           price: v.price != null ? String(v.price) : "",
           specs: v.specs || {},
@@ -153,6 +157,15 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
       }
     }
   }, [initialData]);
+
+  useEffect(() => {
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!dirty) return;
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [dirty]);
 
   const getCatName = (cat: Category) => {
     const c = typeof cat.content === "string" ? JSON.parse(cat.content) : cat.content;
@@ -237,6 +250,7 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
             if (val && val.trim() !== "") cleanSpecs[k] = val;
           }
           return {
+            id: v.id,
             sku: v.sku.trim(),
             price: v.price ? parseFloat(v.price) : null,
             specs: cleanSpecs,
@@ -254,7 +268,11 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
     const method = isEditing ? "PUT" : "POST";
 
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    if (res.ok) { toast.success(isEditing ? "产品已更新" : "产品已创建"); router.push("/admin/products"); }
+    if (res.ok) {
+      setDirty(false);
+      toast.success(isEditing ? "产品已更新" : "产品已创建");
+      router.push("/admin/products");
+    }
     else { const data = await res.json(); toast.error(data.error || "操作失败"); }
     setLoading(false);
   };
@@ -265,16 +283,28 @@ export function ProductForm({ initialData, isEditing }: ProductFormProps) {
   const shippingAttrs = attributes.filter((a) => SHIPPING_KEYS.includes(a.key));
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} onChange={() => setDirty(true)} className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild><Link href="/admin/products"><ArrowLeft className="w-4 h-4 mr-1" />返回</Link></Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link
+              href="/admin/products"
+              onClick={(event) => {
+                if (dirty && !window.confirm("当前修改尚未保存，确定离开吗？")) event.preventDefault();
+              }}
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />返回
+            </Link>
+          </Button>
           <h1 className="text-2xl font-bold">{isEditing ? "编辑产品" : "新建产品"}</h1>
         </div>
-        <Button type="submit" disabled={loading}>
-          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-          {loading ? "保存中..." : "保存"}
-        </Button>
+        <div className="flex items-center gap-3">
+          {dirty && <span className="text-sm text-amber-700">有未保存的修改</span>}
+          <Button type="submit" disabled={loading}>
+            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            {loading ? "保存中..." : "保存"}
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="basic" className="space-y-4">

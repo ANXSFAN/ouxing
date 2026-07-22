@@ -8,6 +8,8 @@ import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { siteConfig } from "@/lib/site-config";
 import { cn } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 type ContentJson = Record<string, { name?: string; description?: string }>;
 
 function getName(content: unknown) {
@@ -42,7 +44,7 @@ export default async function HomePage() {
       {/* ═════════════════ HERO — black spotlight ═════════════════ */}
       <section className="hero-spotlight relative text-white overflow-hidden min-h-[72vh] md:min-h-[80vh] flex flex-col items-center justify-center text-center px-4">
         <div className="relative z-10 max-w-3xl mx-auto">
-          <h1 className="headline-xl text-6xl sm:text-7xl md:text-[110px] text-white">
+          <h1 className="headline-xl text-4xl sm:text-5xl md:text-6xl text-white">
             欧星 LED
           </h1>
           <p className="mt-5 text-lg sm:text-xl md:text-2xl text-white/70 font-medium">
@@ -65,7 +67,7 @@ export default async function HomePage() {
               </p>
             </ScrollReveal>
             <ScrollReveal variant="up" delay={100}>
-              <h2 className="headline-xl text-5xl sm:text-6xl md:text-[76px] mb-4">
+              <h2 className="headline-xl text-3xl md:text-4xl mb-4">
                 {getName(subHero.content)}
               </h2>
             </ScrollReveal>
@@ -139,7 +141,7 @@ export default async function HomePage() {
               <p className="text-base text-[#86868b] text-center mb-3">更多精选</p>
             </ScrollReveal>
             <ScrollReveal variant="up" delay={80}>
-              <h2 className="headline-lg text-4xl md:text-6xl text-center mb-4">
+              <h2 className="headline-lg text-3xl md:text-4xl text-center mb-4">
                 熟悉的型号，即刻询价
               </h2>
             </ScrollReveal>
@@ -153,7 +155,7 @@ export default async function HomePage() {
               {lineup.map((p, i) => (
                 <ScrollReveal key={p.id} variant="rise" delay={(i % 3) * 120}>
                   <Link href={`/products/${p.id}`} className="group block text-center">
-                    <div className="relative aspect-square bg-[#f5f5f7] border border-black/5 rounded-3xl overflow-hidden mb-5">
+                    <div className="relative aspect-square bg-neutral-50 border border-neutral-200 rounded-lg overflow-hidden mb-5">
                       {p.images[0] ? (
                         <Image
                           src={p.images[0].url}
@@ -189,7 +191,7 @@ export default async function HomePage() {
             <p className="text-[#a1a1a6] text-base mb-3">为什么选择欧星</p>
           </ScrollReveal>
           <ScrollReveal variant="up" delay={80}>
-            <h2 className="headline-xl text-4xl sm:text-6xl md:text-7xl mb-12">
+            <h2 className="headline-xl text-3xl md:text-4xl mb-10">
               专业可靠，
               <br className="md:hidden" />
               出口 {siteConfig.stats.exportCountries} 国家
@@ -205,7 +207,7 @@ export default async function HomePage() {
             ].map((s, i) => (
               <ScrollReveal key={s.l} variant="up" delay={i * 80}>
                 <div>
-                  <div className="headline-xl text-5xl md:text-6xl text-white tabular-nums">{s.v}</div>
+                  <div className="headline-xl text-4xl text-white tabular-nums">{s.v}</div>
                   <p className="text-sm text-[#a1a1a6] mt-2">{s.l}</p>
                 </div>
               </ScrollReveal>
@@ -225,7 +227,7 @@ export default async function HomePage() {
       <section className="bg-white py-20 md:py-28 text-center">
         <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollReveal variant="up">
-            <h2 className="headline-xl text-4xl md:text-6xl mb-4">
+            <h2 className="headline-xl text-3xl md:text-4xl mb-4">
               准备好开始您的项目？
             </h2>
           </ScrollReveal>
@@ -265,7 +267,7 @@ function ProductBigTile({ theme, product }: { theme: "light" | "dark"; product: 
     <Link
       href={`/products/${product.id}`}
       className={cn(
-        "apple-tile group block relative aspect-square md:aspect-[5/6] lg:aspect-[5/5] overflow-hidden",
+        "product-card group block relative aspect-square md:aspect-[5/6] lg:aspect-[5/5] overflow-hidden",
         isDark ? "bg-[#1d1d1f] text-white" : "bg-[#e8e8ed] text-[#1d1d1f]",
       )}
     >
@@ -286,7 +288,7 @@ function ProductBigTile({ theme, product }: { theme: "light" | "dark"; product: 
             src={product.images[0].url}
             alt={name}
             fill
-            className="apple-tile-img object-contain p-6 sm:p-10"
+            className="product-card-img object-contain p-6 sm:p-10"
           />
         </div>
       ) : (
@@ -306,7 +308,7 @@ function ProductSmallTile({ product, theme }: { product: ProductPayload; theme: 
     <Link
       href={`/products/${product.id}`}
       className={cn(
-        "apple-tile group block relative aspect-[4/5] overflow-hidden",
+        "product-card group block relative aspect-[4/5] overflow-hidden",
         isDark ? "bg-[#1d1d1f] text-white" : "bg-[#e8e8ed] text-[#1d1d1f]",
       )}
     >
@@ -327,7 +329,7 @@ function ProductSmallTile({ product, theme }: { product: ProductPayload; theme: 
             src={product.images[0].url}
             alt={name}
             fill
-            className="apple-tile-img object-contain p-5"
+            className="product-card-img object-contain p-5"
           />
         </div>
       ) : (

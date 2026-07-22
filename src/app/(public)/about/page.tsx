@@ -25,7 +25,7 @@ export default function AboutPage() {
             </p>
           </ScrollReveal>
           <ScrollReveal variant="up" delay={100}>
-            <h1 className="headline-xl text-5xl sm:text-7xl md:text-[80px] mb-5">
+            <h1 className="headline-xl text-3xl sm:text-4xl md:text-5xl mb-5">
               关于欧星
             </h1>
           </ScrollReveal>
@@ -49,7 +49,7 @@ export default function AboutPage() {
       <section className="bg-white pb-16 md:pb-24">
         <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollReveal variant="fade">
-            <div className="aspect-[16/9] bg-[#e8e8ed] rounded-3xl overflow-hidden relative">
+            <div className="aspect-[16/9] bg-neutral-50 border border-neutral-200 rounded-lg overflow-hidden relative">
               <Image src="/hero.jpg" alt="欧星工厂" fill className="object-cover" />
             </div>
           </ScrollReveal>
@@ -71,7 +71,7 @@ export default function AboutPage() {
             <p className="text-[#86868b] text-base mb-3">数据说话</p>
           </ScrollReveal>
           <ScrollReveal variant="up" delay={80}>
-            <h2 className="headline-xl text-4xl sm:text-6xl md:text-7xl mb-14">
+            <h2 className="headline-xl text-3xl md:text-4xl mb-12">
               十年深耕
             </h2>
           </ScrollReveal>
@@ -85,7 +85,7 @@ export default function AboutPage() {
             ].map((s, i) => (
               <ScrollReveal key={s.l} variant="up" delay={i * 80}>
                 <div>
-                  <div className="headline-xl text-5xl md:text-6xl text-white tabular-nums">{s.v}</div>
+                  <div className="headline-xl text-4xl text-white tabular-nums">{s.v}</div>
                   <p className="text-sm text-[#86868b] mt-2">{s.l}</p>
                 </div>
               </ScrollReveal>
@@ -101,7 +101,7 @@ export default function AboutPage() {
             <p className="text-base text-[#86868b] text-center mb-3">核心能力</p>
           </ScrollReveal>
           <ScrollReveal variant="up" delay={80}>
-            <h2 className="headline-lg text-4xl md:text-6xl text-center mb-4">
+            <h2 className="headline-lg text-3xl md:text-4xl text-center mb-4">
               从光学到出厂，
               <br className="md:hidden" />
               <span className="text-[#6e6e73]">全程自主把控</span>
@@ -116,7 +116,7 @@ export default function AboutPage() {
               { icon: Globe, title: "全球网络", desc: "产品远销 50 多个国家和地区" },
             ].map((item, i) => (
               <ScrollReveal key={item.title} variant="up" delay={i * 80}>
-                <div className="apple-tile bg-[#f5f5f7] p-7 h-full">
+                <div className="product-card bg-neutral-50 p-7 h-full">
                   <item.icon className="w-7 h-7 text-[#1d1d1f] mb-5" strokeWidth={1.5} />
                   <h3 className="headline-lg text-[19px] text-[#1d1d1f] mb-2">{item.title}</h3>
                   <p className="text-[13px] text-[#6e6e73] leading-relaxed">{item.desc}</p>
@@ -134,7 +134,7 @@ export default function AboutPage() {
             <p className="text-base text-[#86868b] text-center mb-3">服务承诺</p>
           </ScrollReveal>
           <ScrollReveal variant="up" delay={80}>
-            <h2 className="headline-lg text-4xl md:text-6xl text-center mb-14">
+            <h2 className="headline-lg text-3xl md:text-4xl text-center mb-12">
               专业 · 可靠 · 及时
             </h2>
           </ScrollReveal>
@@ -162,7 +162,7 @@ export default function AboutPage() {
       <section className="bg-[#1d1d1f] py-20 md:py-28 text-center">
         <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollReveal variant="up">
-            <h2 className="headline-xl text-4xl md:text-6xl text-white mb-4">
+            <h2 className="headline-xl text-3xl md:text-4xl text-white mb-4">
               找一个可靠的 LED 供应商
             </h2>
           </ScrollReveal>

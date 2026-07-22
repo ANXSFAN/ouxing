@@ -11,6 +11,11 @@ export async function GET(request: NextRequest) {
   const category = searchParams.get("category") || "";
   const featured = searchParams.get("featured");
   const all = searchParams.get("all");
+  const session = all ? await auth() : null;
+
+  if (all && !session) {
+    return NextResponse.json({ error: "未授权" }, { status: 401 });
+  }
 
   const where: Record<string, unknown> = {};
   if (!all) where.isActive = true;
@@ -22,6 +27,8 @@ export async function GET(request: NextRequest) {
     where.OR = [
       { modelNumber: { contains: search, mode: "insensitive" } },
       { slug: { contains: search, mode: "insensitive" } },
+      { content: { path: ["zh", "name"], string_contains: search } },
+      { content: { path: ["en", "name"], string_contains: search } },
     ];
   }
 
@@ -157,4 +164,25 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json(product, { status: 201 });
+}
+
+export async function PATCH(request: NextRequest) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "未授权" }, { status: 401 });
+
+  const body = await request.json();
+  const ids = Array.isArray(body.ids)
+    ? body.ids.filter((id: unknown): id is string => typeof id === "string" && id.length > 0)
+    : [];
+
+  if (ids.length === 0 || typeof body.isActive !== "boolean") {
+    return NextResponse.json({ error: "请选择产品并指定上架状态" }, { status: 400 });
+  }
+
+  const result = await prisma.product.updateMany({
+    where: { id: { in: ids } },
+    data: { isActive: body.isActive },
+  });
+
+  return NextResponse.json({ updated: result.count });
 }

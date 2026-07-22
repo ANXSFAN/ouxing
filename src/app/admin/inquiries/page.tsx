@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { MessageSquare, Eye, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { MessageSquare, Eye, Trash2, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
 import { INQUIRY_STATUS_LABELS } from "@/lib/constants";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -56,23 +56,30 @@ export default function InquiriesPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState("");
 
   const fetchData = useCallback(() => {
+    setFetching(true);
+    setError("");
     const params = new URLSearchParams({
       page: String(page),
       ...(statusFilter && { status: statusFilter }),
     });
     fetch(`/api/inquiries?${params}`)
-      .then((res) => res.json())
+      .then((res) => { if (!res.ok) throw new Error("询价列表加载失败"); return res.json(); })
       .then((data) => {
         setInquiries(data.inquiries);
         setTotal(data.total);
         setTotalPages(data.totalPages);
-      });
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setFetching(false));
   }, [page, statusFilter]);
 
   useEffect(() => {
-    fetchData();
+    const timer = window.setTimeout(fetchData, 0);
+    return () => window.clearTimeout(timer);
   }, [fetchData]);
 
   const handleDelete = async () => {
@@ -111,11 +118,15 @@ export default function InquiriesPage() {
         </Select>
       </div>
 
-      {inquiries.length === 0 ? (
+      {fetching ? (
+        <div className="flex items-center justify-center rounded-lg border bg-white py-16 text-sm text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" />正在加载询价…</div>
+      ) : error ? (
+        <div className="rounded-lg border border-red-200 bg-white py-10 text-center"><AlertCircle className="mx-auto h-7 w-7 text-red-500" /><p className="mt-2 text-sm text-slate-600">{error}</p><Button variant="outline" className="mt-4" onClick={fetchData}><RefreshCw className="mr-2 h-4 w-4" />重新加载</Button></div>
+      ) : inquiries.length === 0 ? (
         <EmptyState icon={MessageSquare} title="暂无询价" description="客户提交的询价将显示在这里" />
       ) : (
         <>
-          <div className="bg-white rounded-lg border">
+          <div className="overflow-x-auto bg-white rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>

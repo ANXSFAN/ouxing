@@ -1,6 +1,7 @@
 import React from "react";
 import path from "path";
 import fs from "fs";
+/* eslint-disable jsx-a11y/alt-text -- @react-pdf/renderer Image does not support an HTML alt prop. */
 import {
   Document,
   Page,

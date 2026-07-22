@@ -160,13 +160,13 @@ function Content() {
 
   return (
     <div className="bg-white min-h-screen text-[#1d1d1f]">
-      {/* Hero / page header — Apple Store style */}
+      {/* Product catalog header */}
       <section className="text-center pt-16 md:pt-20 pb-10 md:pb-14">
         <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-base text-[#86868b] mb-3">
             {currentCatName ? "产品分类" : "全部产品"}
           </p>
-          <h1 className="headline-xl text-5xl md:text-7xl mb-4">
+          <h1 className="headline-xl text-3xl md:text-4xl mb-4">
             {currentCatName || "全部产品"}
           </h1>
           <p className="text-xl md:text-2xl text-[#86868b] tracking-tight">
@@ -175,7 +175,7 @@ function Content() {
         </div>
       </section>
 
-      {/* Search — minimal Apple search bar */}
+      {/* Product search */}
       <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8 mb-8">
         <div className="relative max-w-md mx-auto">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#86868b]" strokeWidth={2} />
@@ -183,7 +183,7 @@ function Content() {
             placeholder="搜索产品型号、名称…"
             defaultValue={currentSearch}
             onKeyDown={(e) => { if (e.key === "Enter") updateParams("search", (e.target as HTMLInputElement).value); }}
-            className="pl-11 h-11 bg-[#f5f5f7] border-0 rounded-full focus-visible:ring-2 focus-visible:ring-[#1d1d1f]/15"
+            className="pl-11 h-11 bg-neutral-50 border border-neutral-200 rounded-md focus-visible:ring-2 focus-visible:ring-neutral-900/15"
           />
         </div>
       </div>
@@ -222,7 +222,7 @@ function Content() {
             <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
               <button
                 onClick={() => setFilterOpen(true)}
-                className="lg:hidden inline-flex items-center gap-1.5 px-4 h-9 bg-[#f5f5f7] rounded-full text-sm text-[#1d1d1f]"
+                className="lg:hidden inline-flex items-center gap-1.5 px-4 h-9 bg-neutral-50 border border-neutral-200 rounded-md text-sm text-neutral-900"
               >
                 <SlidersHorizontal className="w-4 h-4" /> 筛选
                 {Object.keys(activeSpecFilters).length > 0 && (
@@ -263,7 +263,7 @@ function Content() {
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i}>
-                    <div className="aspect-square bg-[#f5f5f7] rounded-3xl animate-pulse" />
+                    <div className="aspect-square bg-neutral-50 rounded-lg animate-pulse" />
                     <div className="h-3 bg-[#f5f5f7] rounded mt-5 w-1/3 animate-pulse mx-auto" />
                     <div className="h-4 bg-[#f5f5f7] rounded mt-2 w-3/4 animate-pulse mx-auto" />
                   </div>
@@ -337,7 +337,7 @@ function Pagination({ page, totalPages, onChange }: { page: number; totalPages: 
       <button
         onClick={() => onChange(page - 1)}
         disabled={page <= 1}
-        className="inline-flex items-center gap-1 px-4 h-9 rounded-full text-sm text-[#1d1d1f] hover:bg-[#f5f5f7] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="inline-flex items-center gap-1 px-4 h-9 rounded-md text-sm text-neutral-900 hover:bg-neutral-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
       >
         <ChevronLeft className="w-4 h-4" /> 上一页
       </button>
@@ -350,7 +350,7 @@ function Pagination({ page, totalPages, onChange }: { page: number; totalPages: 
               key={p}
               onClick={() => onChange(p)}
               className={cn(
-                "w-9 h-9 rounded-full text-sm font-medium tabular-nums transition-colors",
+                "w-9 h-9 rounded-md text-sm font-medium tabular-nums transition-colors",
                 p === page ? "bg-[#1d1d1f] text-white" : "text-[#1d1d1f] hover:bg-[#f5f5f7]",
               )}
             >
@@ -362,7 +362,7 @@ function Pagination({ page, totalPages, onChange }: { page: number; totalPages: 
       <button
         onClick={() => onChange(page + 1)}
         disabled={page >= totalPages}
-        className="inline-flex items-center gap-1 px-4 h-9 rounded-full text-sm text-[#1d1d1f] hover:bg-[#f5f5f7] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="inline-flex items-center gap-1 px-4 h-9 rounded-md text-sm text-neutral-900 hover:bg-neutral-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
       >
         下一页 <ChevronRight className="w-4 h-4" />
       </button>
@@ -398,7 +398,7 @@ function ProductCard({
       href={`/products/${product.id}`}
       className="group block text-center"
     >
-      <div className="relative aspect-square bg-[#f5f5f7] border border-black/5 rounded-3xl overflow-hidden mb-5">
+      <div className="relative aspect-square bg-neutral-50 border border-neutral-200 rounded-lg overflow-hidden mb-5">
         {imageUrl ? (
           <Image
             src={imageUrl}
@@ -421,7 +421,7 @@ function ProductCard({
             addToCart({ productId: product.id, variantId: null, name, modelNumber: product.modelNumber, imageUrl });
             toast.success("已加入询价单");
           }}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-4 h-9 bg-[#1d1d1f] text-white text-xs font-medium rounded-full shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300"
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-4 h-9 bg-neutral-900 text-white text-xs font-medium rounded-md shadow-md opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300"
         >
           <ClipboardList className="w-3.5 h-3.5" /> 加入询价
         </button>

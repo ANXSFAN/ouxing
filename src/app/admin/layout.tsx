@@ -12,6 +12,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <SessionProvider>
@@ -19,15 +20,17 @@ export default function AdminLayout({
         <AdminSidebar
           collapsed={collapsed}
           onToggle={() => setCollapsed(!collapsed)}
+          mobileOpen={mobileOpen}
+          onMobileClose={() => setMobileOpen(false)}
         />
         <div
           className={cn(
             "transition-all duration-300",
-            collapsed ? "ml-16" : "ml-60"
+            collapsed ? "md:ml-16" : "md:ml-60"
           )}
         >
-          <AdminTopbar />
-          <main className="p-6">{children}</main>
+          <AdminTopbar onMenuClick={() => setMobileOpen(true)} />
+          <main className="p-4 md:p-6">{children}</main>
         </div>
       </div>
     </SessionProvider>

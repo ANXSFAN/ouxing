@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Package, Download, Eye, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Package, Download, Eye, ChevronLeft, ChevronRight, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { QUOTE_STATUS_LABELS } from "@/lib/constants";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -46,18 +46,27 @@ export default function PackingListsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState("");
 
   const fetchData = useCallback(() => {
+    setFetching(true);
+    setError("");
     fetch(`/api/quotes?page=${page}`)
-      .then((res) => res.json())
+      .then((res) => { if (!res.ok) throw new Error("箱单记录加载失败"); return res.json(); })
       .then((data) => {
         setQuotes(data.quotes);
         setTotal(data.total);
         setTotalPages(data.totalPages);
-      });
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setFetching(false));
   }, [page]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    const timer = window.setTimeout(fetchData, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchData]);
 
   const downloadPackingList = async (quoteId: string, quoteNumber: string, lang: "zh" | "en") => {
     setDownloadingId(`${quoteId}-${lang}`);
@@ -87,11 +96,15 @@ export default function PackingListsPage() {
         description={`共 ${total} 条记录`}
       />
 
-      {quotes.length === 0 ? (
+      {fetching ? (
+        <div className="flex items-center justify-center rounded-lg border bg-white py-16 text-sm text-slate-500"><Loader2 className="mr-2 h-5 w-5 animate-spin" />正在加载箱单记录…</div>
+      ) : error ? (
+        <div className="rounded-lg border border-red-200 bg-white py-10 text-center"><AlertCircle className="mx-auto h-7 w-7 text-red-500" /><p className="mt-2 text-sm text-slate-600">{error}</p><Button variant="outline" className="mt-4" onClick={fetchData}><RefreshCw className="mr-2 h-4 w-4" />重新加载</Button></div>
+      ) : quotes.length === 0 ? (
         <EmptyState icon={Package} title="暂无箱单" description="请先创建报价单" />
       ) : (
         <>
-          <div className="bg-white rounded-lg border">
+          <div className="overflow-x-auto bg-white rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow>

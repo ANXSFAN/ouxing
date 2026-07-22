@@ -9,7 +9,7 @@ export default function NotFound() {
       <main className="flex-1 flex items-center justify-center px-4 py-24 text-center">
         <div>
           <p className="text-base text-[#86868b] mb-3">404</p>
-          <h1 className="headline-xl text-4xl md:text-6xl mb-4">页面不存在</h1>
+          <h1 className="headline-xl text-3xl md:text-4xl mb-4">页面不存在</h1>
           <p className="text-[15px] md:text-[17px] text-[#6e6e73] mb-8">
             您访问的页面可能已被移动或删除。
           </p>

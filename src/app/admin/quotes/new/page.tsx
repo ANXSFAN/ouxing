@@ -116,9 +116,12 @@ function NewQuoteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [productSearch, setProductSearch] = useState("");
+  const [inquiryLoading, setInquiryLoading] = useState(Boolean(searchParams.get("inquiry")));
+  const [inquiryError, setInquiryError] = useState("");
 
   const [form, setForm] = useState({
     customerName: "",
@@ -141,9 +144,21 @@ function NewQuoteContent() {
   // Load inquiry data if coming from inquiry page
   const inquiryId = searchParams.get("inquiry");
   useEffect(() => {
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!dirty) return;
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [dirty]);
+
+  useEffect(() => {
     if (inquiryId) {
       fetch(`/api/inquiries/${inquiryId}`)
-        .then((res) => res.json())
+        .then((res) => {
+          if (!res.ok) throw new Error("询价信息加载失败");
+          return res.json();
+        })
         .then((data) => {
           if (data.id) {
             setForm((prev) => ({
@@ -179,7 +194,9 @@ function NewQuoteContent() {
               );
             }
           }
-        });
+        })
+        .catch((error: Error) => setInquiryError(error.message))
+        .finally(() => setInquiryLoading(false));
     }
   }, [inquiryId]);
 
@@ -192,6 +209,8 @@ function NewQuoteContent() {
 
   useEffect(() => {
     if (productDialogOpen) searchProducts();
+    // searchProducts is intentionally invoked only when the dialog opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productDialogOpen]);
 
   const addUnit = (unit: SelectableUnit) => {
@@ -254,8 +273,10 @@ function NewQuoteContent() {
     });
 
     if (res.ok) {
+      const quote = await res.json();
+      setDirty(false);
       toast.success("报价单已创建");
-      router.push("/admin/quotes");
+      router.push(`/admin/quotes/${quote.id}`);
     } else {
       const data = await res.json();
       toast.error(data.error || "创建失败");
@@ -264,19 +285,38 @@ function NewQuoteContent() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="flex items-center justify-between">
+    <form onSubmit={handleSubmit} onChange={() => setDirty(true)} className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/admin/quotes"><ArrowLeft className="w-4 h-4 mr-1" />返回</Link>
+            <Link
+              href={inquiryId ? `/admin/inquiries/${inquiryId}` : "/admin/quotes"}
+              onClick={(event) => {
+                if (dirty && !window.confirm("报价尚未创建，确定离开吗？")) event.preventDefault();
+              }}
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />返回
+            </Link>
           </Button>
           <h1 className="text-2xl font-bold">新建报价单</h1>
         </div>
-        <Button type="submit" disabled={loading}>
-          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-          {loading ? "创建中..." : "创建报价"}
-        </Button>
+        <div className="flex items-center gap-3 self-end sm:self-auto">
+          {dirty && <span className="text-sm text-amber-700">有未保存的修改</span>}
+          <Button type="submit" disabled={loading || inquiryLoading || Boolean(inquiryError)}>
+            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            {loading ? "创建中..." : "创建报价"}
+          </Button>
+        </div>
       </div>
+
+      {inquiryLoading && (
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+          <Loader2 className="h-4 w-4 animate-spin" />正在载入询价客户和产品信息…
+        </div>
+      )}
+      {inquiryError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{inquiryError}，请返回询价详情后重试。</div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Customer Info */}
@@ -319,7 +359,7 @@ function NewQuoteContent() {
           <CardContent>
             {items.length === 0 ? (
               <p className="text-sm text-slate-400 text-center py-8">
-                点击"添加产品"选择要报价的产品
+                点击“添加产品”选择要报价的产品
               </p>
             ) : (
               <Table className="table-fixed">

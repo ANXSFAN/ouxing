@@ -45,19 +45,26 @@ export default function ProductDetailClient() {
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [attrs, setAttrs] = useState<AttrDef[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [selectedImg, setSelectedImg] = useState(0);
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [qty, setQty] = useState(1);
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/products/${params.id}`).then((r) => r.json()),
+      fetch(`/api/products/${params.id}`).then((r) => {
+        if (!r.ok) throw new Error(r.status === 404 ? "产品不存在或已下架" : "产品加载失败");
+        return r.json();
+      }),
       fetch("/api/attributes").then((r) => r.json()).catch(() => []),
     ]).then(([p, a]) => {
       setProduct(p);
+      const firstActiveVariant = (p.variants || []).find((variant: VariantRow) => variant.isActive);
+      if (firstActiveVariant) setSelections(firstActiveVariant.specs || {});
       if (Array.isArray(a)) setAttrs(a);
-      setLoading(false);
-    });
+    }).catch((error: Error) => {
+      setLoadError(error.message);
+    }).finally(() => setLoading(false));
   }, [params.id]);
 
   const activeVariants = useMemo(
@@ -79,13 +86,6 @@ export default function ProductDetailClient() {
       .filter((d) => d.values.length > 0);
   }, [activeVariants]);
 
-  useEffect(() => {
-    if (activeVariants.length > 0 && Object.keys(selections).length === 0) {
-      const first = activeVariants[0];
-      setSelections(first.specs || {});
-    }
-  }, [activeVariants, selections]);
-
   const currentVariant = useMemo(() => {
     if (activeVariants.length === 0 || variantDimensions.length === 0) return null;
     return activeVariants.find((v) =>
@@ -97,8 +97,6 @@ export default function ProductDetailClient() {
     if (currentVariant && currentVariant.images.length > 0) return currentVariant.images;
     return product?.images || [];
   }, [currentVariant, product?.images]);
-
-  useEffect(() => { setSelectedImg(0); }, [currentVariant?.id]);
 
   const pickVariant = (dimKey: string, val: string): VariantRow | null => {
     const candidates = activeVariants.filter((v) => v.specs?.[dimKey] === val);
@@ -117,10 +115,11 @@ export default function ProductDetailClient() {
       <Loader2 className="w-6 h-6 animate-spin text-[#86868b]" />
     </div>
   );
-  if (!product) return (
+  if (loadError || !product) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
       <Package className="w-12 h-12 text-[#d2d2d7]" />
-      <p className="text-[#86868b]">产品不存在</p>
+      <p className="text-neutral-500">{loadError || "产品不存在"}</p>
+      <Link href="/products" className="appbtn">返回产品列表</Link>
     </div>
   );
 
@@ -178,7 +177,7 @@ export default function ProductDetailClient() {
 
   return (
     <div className="bg-white min-h-screen text-[#1d1d1f]">
-      {/* Apple-style breadcrumb — thin, no bg band */}
+      {/* Product breadcrumb */}
       <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-2">
         <div className="text-[12px] text-[#86868b] flex items-center gap-1.5 flex-wrap">
           <Link href="/" className="hover:text-[#1d1d1f] transition-colors">首页</Link>
@@ -197,7 +196,7 @@ export default function ProductDetailClient() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           {/* ── Image Gallery ── */}
           <div className="lg:col-span-7">
-            <div className="aspect-square bg-[#e8e8ed] rounded-3xl relative overflow-hidden group">
+            <div className="aspect-square bg-neutral-50 border border-neutral-200 rounded-lg relative overflow-hidden group">
               {displayImages[selectedImg] ? (
                 <Image
                   key={displayImages[selectedImg].id}
@@ -217,7 +216,7 @@ export default function ProductDetailClient() {
                   <button
                     onClick={() => setSelectedImg(Math.max(0, selectedImg - 1))}
                     disabled={selectedImg === 0}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/85 backdrop-blur-md flex items-center justify-center disabled:opacity-30 hover:bg-white transition-all shadow-sm"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md bg-white/90 flex items-center justify-center disabled:opacity-30 hover:bg-white transition-colors shadow-sm"
                     aria-label="上一张"
                   >
                     <ChevronLeft className="w-5 h-5 text-[#1d1d1f]" strokeWidth={1.75} />
@@ -225,7 +224,7 @@ export default function ProductDetailClient() {
                   <button
                     onClick={() => setSelectedImg(Math.min(displayImages.length - 1, selectedImg + 1))}
                     disabled={selectedImg === displayImages.length - 1}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/85 backdrop-blur-md flex items-center justify-center disabled:opacity-30 hover:bg-white transition-all shadow-sm"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md bg-white/90 flex items-center justify-center disabled:opacity-30 hover:bg-white transition-colors shadow-sm"
                     aria-label="下一张"
                   >
                     <ChevronRight className="w-5 h-5 text-[#1d1d1f]" strokeWidth={1.75} />
@@ -245,7 +244,7 @@ export default function ProductDetailClient() {
                     key={img.id}
                     onClick={() => setSelectedImg(i)}
                     className={cn(
-                      "w-20 h-20 rounded-2xl overflow-hidden transition-all shrink-0 relative bg-[#e8e8ed]",
+                      "w-20 h-20 rounded-md overflow-hidden transition-all shrink-0 relative bg-neutral-50 border border-neutral-200",
                       i === selectedImg
                         ? "ring-2 ring-[#1d1d1f] ring-offset-2 ring-offset-white"
                         : "opacity-60 hover:opacity-100",
@@ -304,7 +303,10 @@ export default function ProductDetailClient() {
                             type="button"
                             onClick={() => {
                               const target = pickVariant(dim.key, val);
-                              if (target) setSelections({ ...(target.specs || {}) });
+                              if (target) {
+                                setSelections({ ...(target.specs || {}) });
+                                setSelectedImg(0);
+                              }
                             }}
                             className={cn(
                               "inline-flex items-center px-4 py-2 rounded-full border text-[13px] font-medium transition-all",
@@ -329,7 +331,7 @@ export default function ProductDetailClient() {
                 {highlightSpecs.slice(0, 4).map((spec) => (
                   <div
                     key={spec.key}
-                    className="bg-[#f5f5f7] rounded-2xl px-4 py-3"
+                    className="bg-neutral-50 border border-neutral-200 rounded-md px-4 py-3"
                   >
                     <p className="text-[11px] text-[#86868b] mb-1">
                       {spec.label}
@@ -344,10 +346,10 @@ export default function ProductDetailClient() {
             <div className="space-y-3">
               <div className="flex items-center gap-4">
                 <p className="text-[13px] font-medium text-[#1d1d1f] w-10">数量</p>
-                <div className="inline-flex items-center border border-[#d2d2d7] rounded-full h-12 px-1">
+                <div className="inline-flex items-center border border-neutral-300 rounded-md h-12 px-1">
                   <button
                     onClick={() => setQty(Math.max(1, qty - 1))}
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors"
+                    className="w-10 h-10 rounded-md flex items-center justify-center text-neutral-900 hover:bg-neutral-50 transition-colors"
                     aria-label="减少"
                   >
                     <Minus className="w-4 h-4" strokeWidth={1.75} />
@@ -361,7 +363,7 @@ export default function ProductDetailClient() {
                   />
                   <button
                     onClick={() => setQty(qty + 1)}
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors"
+                    className="w-10 h-10 rounded-md flex items-center justify-center text-neutral-900 hover:bg-neutral-50 transition-colors"
                     aria-label="增加"
                   >
                     <Plus className="w-4 h-4" strokeWidth={1.75} />
@@ -380,7 +382,7 @@ export default function ProductDetailClient() {
               </div>
             </div>
 
-            {/* Trust badges — minimal apple-style */}
+            {/* Trust badges */}
             <div className="mt-8 pt-7 border-t border-black/10 grid grid-cols-3 gap-3">
               {[
                 { icon: Truck, title: "全球发货", desc: "50+ 国家" },
@@ -511,7 +513,7 @@ function DownloadCard({
     <a
       href={href}
       download={download}
-      className="group flex items-center gap-3 p-4 rounded-2xl bg-[#f5f5f7] hover:bg-[#e8e8ed] transition-colors"
+      className="group flex items-center gap-3 p-4 rounded-md border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 transition-colors"
     >
       <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0">
         <Icon className="w-5 h-5 text-[#1d1d1f]" strokeWidth={1.5} />

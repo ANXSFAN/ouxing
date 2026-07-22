@@ -88,18 +88,29 @@ export async function POST(request: NextRequest) {
   const subtotal = itemsWithTotals.reduce((sum, item) => sum + item.totalPrice, 0);
   const total = subtotal - (data.discount || 0) + (data.tax || 0);
 
-  const quote = await prisma.quote.create({
-    data: {
-      ...data,
-      quoteNumber,
-      subtotal,
-      total,
-      createdById: session.user.id,
-      items: {
-        create: itemsWithTotals,
+  const quote = await prisma.$transaction(async (tx) => {
+    const createdQuote = await tx.quote.create({
+      data: {
+        ...data,
+        quoteNumber,
+        subtotal,
+        total,
+        createdById: session.user.id,
+        items: {
+          create: itemsWithTotals,
+        },
       },
-    },
-    include: { items: true },
+      include: { items: true },
+    });
+
+    if (data.inquiryId) {
+      await tx.inquiry.update({
+        where: { id: data.inquiryId },
+        data: { status: "QUOTED" },
+      });
+    }
+
+    return createdQuote;
   });
 
   return NextResponse.json(quote, { status: 201 });

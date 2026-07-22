@@ -23,8 +23,7 @@ export async function POST(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "未授权" }, { status: 401 });

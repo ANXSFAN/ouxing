@@ -47,7 +47,7 @@ export default function LoginPage() {
   return (
     <Card className="w-full max-w-md mx-4 shadow-2xl border-slate-700 bg-slate-800/50 backdrop-blur">
       <CardHeader className="text-center space-y-4">
-        <div className="mx-auto w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center">
+        <div className="mx-auto w-16 h-16 bg-amber-500/10 rounded-lg flex items-center justify-center">
           <Lightbulb className="w-8 h-8 text-amber-500" />
         </div>
         <div>

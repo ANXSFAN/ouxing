@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { INQUIRY_STATUS_LABELS } from "@/lib/constants";
+import { INQUIRY_STATUS_LABELS, QUOTE_STATUS_LABELS } from "@/lib/constants";
 import {
   ArrowLeft,
   User,
@@ -28,6 +28,8 @@ import {
   Loader2,
   Save,
   FileText,
+  ExternalLink,
+  Check,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -53,6 +55,14 @@ interface InquiryDetail {
   readyAt: string | null;
   shippedAt: string | null;
   createdAt: string;
+  quotes: {
+    id: string;
+    quoteNumber: string;
+    status: string;
+    total: string;
+    currency: string;
+    createdAt: string;
+  }[];
   products: {
     id: string;
     quantity: number | null;
@@ -75,19 +85,24 @@ interface InquiryDetail {
 
 export default function InquiryDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const [inquiry, setInquiry] = useState<InquiryDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [status, setStatus] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [orderedAt, setOrderedAt] = useState("");
   const [readyAt, setReadyAt] = useState("");
   const [shippedAt, setShippedAt] = useState("");
+  const workflow = ["PENDING", "PROCESSING", "QUOTED", "CLOSED"];
+  const currentWorkflowIndex = workflow.indexOf(status);
 
   useEffect(() => {
     fetch(`/api/inquiries/${params.id}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("询价详情加载失败");
+        return res.json();
+      })
       .then((data) => {
         setInquiry(data);
         setStatus(data.status);
@@ -95,8 +110,9 @@ export default function InquiryDetailPage() {
         setOrderedAt(toDatetimeLocal(data.orderedAt));
         setReadyAt(toDatetimeLocal(data.readyAt));
         setShippedAt(toDatetimeLocal(data.shippedAt));
-        setLoading(false);
-      });
+      })
+      .catch((error: Error) => setLoadError(error.message))
+      .finally(() => setLoading(false));
   }, [params.id]);
 
   const handleSave = async () => {
@@ -129,11 +145,19 @@ export default function InquiryDetailPage() {
     );
   }
 
-  if (!inquiry) return null;
+  if (loadError || !inquiry) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-white px-6 py-12 text-center">
+        <p className="font-medium text-slate-900">无法加载询价详情</p>
+        <p className="mt-1 text-sm text-slate-500">请返回列表后重试。</p>
+        <Button asChild variant="outline" className="mt-4"><Link href="/admin/inquiries">返回询价列表</Link></Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/admin/inquiries">
@@ -143,7 +167,15 @@ export default function InquiryDetailPage() {
           </Button>
           <h1 className="text-2xl font-bold text-slate-900">询价详情</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          {inquiry.quotes[0] && (
+            <Button asChild variant="outline">
+              <Link href={`/admin/quotes/${inquiry.quotes[0].id}`}>
+                <ExternalLink className="w-4 h-4 mr-2" />
+                查看最新报价
+              </Link>
+            </Button>
+          )}
           <Button
             asChild
             variant="outline"
@@ -176,7 +208,7 @@ export default function InquiryDetailPage() {
             {inquiry.phone && (
               <div className="flex items-center gap-3">
                 <Phone className="w-4 h-4 text-slate-400" />
-                <span className="text-sm">{inquiry.phone}</span>
+                <a className="text-sm text-slate-700 hover:underline" href={`tel:${inquiry.phone}`}>{inquiry.phone}</a>
               </div>
             )}
             {inquiry.name && (
@@ -188,7 +220,7 @@ export default function InquiryDetailPage() {
             {inquiry.email && (
               <div className="flex items-center gap-3">
                 <Mail className="w-4 h-4 text-slate-400" />
-                <span className="text-sm">{inquiry.email}</span>
+                <a className="text-sm text-slate-700 hover:underline" href={`mailto:${inquiry.email}`}>{inquiry.email}</a>
               </div>
             )}
             <div className="flex items-center gap-3">
@@ -269,6 +301,49 @@ export default function InquiryDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">处理进度</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {workflow.map((step, index) => {
+              const reached = currentWorkflowIndex >= index;
+              return (
+                <div key={step} className={`flex items-center gap-3 rounded-md border px-3 py-3 ${reached ? "border-slate-300 bg-slate-50" : "border-slate-200 bg-white"}`}>
+                  <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs ${reached ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400"}`}>
+                    {reached ? <Check className="h-3.5 w-3.5" /> : index + 1}
+                  </span>
+                  <span className={`text-sm ${reached ? "font-medium text-slate-900" : "text-slate-500"}`}>{INQUIRY_STATUS_LABELS[step]}</span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {inquiry.quotes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">关联报价</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {inquiry.quotes.map((quote) => (
+              <Link key={quote.id} href={`/admin/quotes/${quote.id}`} className="flex flex-col gap-2 rounded-md border border-slate-200 px-4 py-3 transition-colors hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-medium text-slate-900">{quote.quoteNumber}</p>
+                  <p className="text-xs text-slate-500">{format(new Date(quote.createdAt), "yyyy-MM-dd HH:mm")}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant="secondary">{QUOTE_STATUS_LABELS[quote.status] || quote.status}</Badge>
+                  <span className="font-medium text-slate-900">{quote.currency} {Number(quote.total).toLocaleString("zh-CN", { minimumFractionDigits: 2 })}</span>
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Status & Notes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

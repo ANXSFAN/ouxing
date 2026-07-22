@@ -29,16 +29,28 @@ const navItems = [
 interface AdminSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  mobileOpen: boolean;
+  onMobileClose: () => void;
 }
 
-export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
+export function AdminSidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: AdminSidebarProps) {
   const pathname = usePathname();
 
   return (
+    <>
+    {mobileOpen && (
+      <button
+        type="button"
+        aria-label="关闭导航"
+        className="fixed inset-0 z-40 bg-black/40 md:hidden"
+        onClick={onMobileClose}
+      />
+    )}
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-slate-900 border-r border-slate-800 transition-all duration-300 flex flex-col",
-        collapsed ? "w-16" : "w-60"
+        "fixed left-0 top-0 z-50 flex h-screen w-60 flex-col border-r border-slate-800 bg-slate-900 transition-transform duration-200 md:z-40 md:translate-x-0 md:transition-[width] md:duration-300",
+        mobileOpen ? "translate-x-0" : "-translate-x-full",
+        collapsed ? "md:w-16" : "md:w-60"
       )}
     >
       {/* Logo */}
@@ -64,6 +76,7 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onMobileClose}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                 isActive
@@ -79,7 +92,7 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
       </nav>
 
       {/* Collapse button */}
-      <div className="p-3 border-t border-slate-800">
+      <div className="hidden p-3 border-t border-slate-800 md:block">
         <Button
           variant="ghost"
           size="sm"
@@ -95,5 +108,6 @@ export function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
         </Button>
       </div>
     </aside>
+    </>
   );
 }

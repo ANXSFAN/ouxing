@@ -64,7 +64,7 @@ export default function AttributesPage() {
   const typeLabel: Record<string, string> = { TEXT: "文本", NUMBER: "数字", SELECT: "选择" };
   const scopeLabel: Record<string, string> = { PRODUCT: "产品", VARIANT: "变体" };
 
-  const renderTable = (title: string, icon: React.ReactNode, items: Attribute[], color: string) => {
+  const renderTable = (title: string, icon: React.ReactNode, items: Attribute[]) => {
     if (items.length === 0) return null;
     return (
       <div className="mb-6">
@@ -155,9 +155,9 @@ export default function AttributesPage() {
         <EmptyState icon={Tags} title="暂无属性" description="创建产品技术参数的属性定义" action={<Button asChild><Link href="/admin/attributes/new"><Plus className="w-4 h-4 mr-2" />新建属性</Link></Button>} />
       ) : (
         <>
-          {renderTable("高亮属性", <Star className="h-4 w-4 text-amber-600" />, highlighted, "amber")}
-          {renderTable("可筛选属性", <SlidersHorizontal className="h-4 w-4 text-blue-600" />, filterable, "blue")}
-          {renderTable("普通属性", <Tags className="h-4 w-4 text-slate-500" />, regular, "slate")}
+          {renderTable("高亮属性", <Star className="h-4 w-4 text-amber-600" />, highlighted)}
+          {renderTable("可筛选属性", <SlidersHorizontal className="h-4 w-4 text-blue-600" />, filterable)}
+          {renderTable("普通属性", <Tags className="h-4 w-4 text-slate-500" />, regular)}
         </>
       )}
 

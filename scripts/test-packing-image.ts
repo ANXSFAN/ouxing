@@ -71,8 +71,8 @@ async function main() {
           editAs: 'oneCell',
         });
         lines.push(`  Image added successfully`);
-      } catch (e: any) {
-        lines.push(`  ERROR: ${e.message}`);
+      } catch (e: unknown) {
+        lines.push(`  ERROR: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
     rowIdx++;

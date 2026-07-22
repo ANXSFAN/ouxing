@@ -25,11 +25,12 @@ function InquiryContent() {
   const searchParams = useSearchParams();
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [items, setItems] = useState<InquiryCartItem[]>([]);
+  const [items, setItems] = useState<InquiryCartItem[]>(() =>
+    typeof window === "undefined" ? [] : getCartItems(),
+  );
   const [form, setForm] = useState({ name: "", email: "", company: "", phone: "", message: "" });
 
   useEffect(() => {
-    setItems(getCartItems());
     const onCartChange = () => setItems(getCartItems());
     window.addEventListener("inquiry-cart-change", onCartChange);
     return () => window.removeEventListener("inquiry-cart-change", onCartChange);
@@ -185,7 +186,7 @@ function InquiryContent() {
       <section className="bg-white pt-12 md:pt-16 pb-8 md:pb-10 text-center">
         <div className="max-w-[1024px] mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-base md:text-lg text-[#86868b] mb-3 font-medium">询价单</p>
-          <h1 className="headline-xl text-4xl sm:text-6xl md:text-[72px] mb-4">
+          <h1 className="headline-xl text-3xl md:text-4xl mb-4">
             告诉我们您的需求
           </h1>
           <p className="text-[15px] md:text-[17px] text-[#86868b]">
@@ -199,7 +200,7 @@ function InquiryContent() {
       <div className="max-w-[768px] mx-auto px-4 sm:px-6 lg:px-8 pb-20">
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* ── Product list ── */}
-          <div className="bg-[#f5f5f7] rounded-3xl overflow-hidden">
+          <div className="bg-neutral-50 border border-neutral-200 rounded-lg overflow-hidden">
             <div className="px-6 py-5 flex items-center justify-between">
               <h2 className="headline-lg text-[17px] text-[#1d1d1f] flex items-center gap-2">
                 询价产品
@@ -234,7 +235,7 @@ function InquiryContent() {
                     <div key={itemKey} className="flex gap-4 px-6 py-5">
                       <Link
                         href={`/products/${item.productId}`}
-                        className="w-20 h-20 bg-white rounded-2xl relative overflow-hidden shrink-0"
+                        className="w-20 h-20 bg-white border border-neutral-200 rounded-md relative overflow-hidden shrink-0"
                       >
                         {item.imageUrl ? (
                           <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-2" />
@@ -269,11 +270,11 @@ function InquiryContent() {
                         <div className="flex items-center flex-wrap gap-x-5 gap-y-2 mt-3">
                           <div className="flex items-center gap-2">
                             <span className="text-[12px] text-[#86868b]">数量</span>
-                            <div className="inline-flex items-center bg-white rounded-full px-1">
+                            <div className="inline-flex items-center bg-white border border-neutral-200 rounded-md px-1">
                               <button
                                 type="button"
                                 onClick={() => updateQty(itemKey, -1)}
-                                className="w-7 h-7 rounded-full flex items-center justify-center text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors"
+                                className="w-7 h-7 rounded flex items-center justify-center text-neutral-900 hover:bg-neutral-50 transition-colors"
                               >
                                 <Minus className="w-3 h-3" strokeWidth={1.75} />
                               </button>
@@ -287,7 +288,7 @@ function InquiryContent() {
                               <button
                                 type="button"
                                 onClick={() => updateQty(itemKey, 1)}
-                                className="w-7 h-7 rounded-full flex items-center justify-center text-[#1d1d1f] hover:bg-[#f5f5f7] transition-colors"
+                                className="w-7 h-7 rounded flex items-center justify-center text-neutral-900 hover:bg-neutral-50 transition-colors"
                               >
                                 <Plus className="w-3 h-3" strokeWidth={1.75} />
                               </button>
@@ -304,7 +305,7 @@ function InquiryContent() {
                                 step="0.01"
                                 value={item.expectedPrice ?? ""}
                                 onChange={(e) => updateExpectedPrice(itemKey, e.target.value)}
-                                className="pl-7 pr-3 w-24 h-7 text-[13px] bg-white rounded-full focus:outline-none focus:ring-2 focus:ring-[#1d1d1f]/10 tabular-nums"
+                                className="pl-7 pr-3 w-24 h-7 text-[13px] bg-white border border-neutral-200 rounded-md focus:outline-none focus:ring-2 focus:ring-neutral-900/10 tabular-nums"
                               />
                             </div>
                           </div>
@@ -318,7 +319,7 @@ function InquiryContent() {
           </div>
 
           {/* ── Contact info ── */}
-          <div className="bg-[#f5f5f7] rounded-3xl overflow-hidden">
+          <div className="bg-neutral-50 border border-neutral-200 rounded-lg overflow-hidden">
             <div className="px-6 py-5">
               <h2 className="headline-lg text-[17px] text-[#1d1d1f]">联系方式</h2>
             </div>
@@ -333,7 +334,7 @@ function InquiryContent() {
                     required
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className={appleInputCls}
+                    className={commerceInputCls}
                   />
                 </div>
                 <div>
@@ -345,7 +346,7 @@ function InquiryContent() {
                     required
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className={appleInputCls}
+                    className={commerceInputCls}
                   />
                 </div>
                 <div>
@@ -354,7 +355,7 @@ function InquiryContent() {
                     type="text"
                     value={form.company}
                     onChange={(e) => setForm({ ...form, company: e.target.value })}
-                    className={appleInputCls}
+                    className={commerceInputCls}
                   />
                 </div>
                 <div>
@@ -363,7 +364,7 @@ function InquiryContent() {
                     type="tel"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className={appleInputCls}
+                    className={commerceInputCls}
                   />
                 </div>
               </div>
@@ -374,7 +375,7 @@ function InquiryContent() {
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
                   rows={4}
                   placeholder="如有特殊需求请在此说明…"
-                  className="w-full px-4 py-3 bg-white rounded-2xl text-[14px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none focus:ring-2 focus:ring-[#1d1d1f]/15 transition-all resize-none"
+                  className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-md text-[14px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none focus:ring-2 focus:ring-[#1d1d1f]/15 transition-all resize-none"
                 />
               </div>
             </div>
@@ -400,5 +401,5 @@ function InquiryContent() {
   );
 }
 
-const appleInputCls =
-  "w-full h-11 px-4 bg-white rounded-2xl text-[14px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none focus:ring-2 focus:ring-[#1d1d1f]/15 transition-all";
+const commerceInputCls =
+  "w-full h-11 px-4 bg-white border border-neutral-200 rounded-md text-[14px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none focus:ring-2 focus:ring-[#1d1d1f]/15 transition-all";

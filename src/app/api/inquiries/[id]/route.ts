@@ -34,7 +34,13 @@ export async function GET(
     return NextResponse.json({ error: "询价不存在" }, { status: 404 });
   }
 
-  return NextResponse.json(inquiry);
+  const quotes = await prisma.quote.findMany({
+    where: { inquiryId: id },
+    select: { id: true, quoteNumber: true, status: true, total: true, currency: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return NextResponse.json({ ...inquiry, quotes });
 }
 
 export async function PUT(

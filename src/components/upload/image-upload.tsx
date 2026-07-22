@@ -2,8 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { Button } from "@/components/ui/button";
-import { ImagePlus, X, Loader2 } from "lucide-react";
+import { ImagePlus, X, Loader2, ArrowLeft, ArrowRight, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 
@@ -24,6 +23,7 @@ export function ImageUpload({
   maxImages = 10,
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -71,26 +71,58 @@ export function ImageUpload({
     onChange(images.filter((_, i) => i !== index));
   };
 
+  const moveImage = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= images.length) return;
+    const next = [...images];
+    [next[index], next[target]] = [next[target], next[index]];
+    onChange(next);
+  };
+
+  const dropImage = (targetIndex: number) => {
+    if (draggingIndex === null || draggingIndex === targetIndex) return;
+    const next = [...images];
+    const [dragged] = next.splice(draggingIndex, 1);
+    next.splice(targetIndex, 0, dragged);
+    onChange(next);
+    setDraggingIndex(null);
+  };
+
   return (
     <div className="space-y-3">
       {/* Image Preview Grid */}
       {images.length > 0 && (
         <div className="grid grid-cols-4 gap-3">
           {images.map((img, index) => (
-            <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border bg-slate-50">
+            <div
+              key={`${img.url}-${index}`}
+              draggable
+              onDragStart={() => setDraggingIndex(index)}
+              onDragEnd={() => setDraggingIndex(null)}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={() => dropImage(index)}
+              className={`relative group aspect-square rounded-lg overflow-hidden border bg-slate-50 ${draggingIndex === index ? "border-slate-500 opacity-60" : "border-slate-200"}`}
+            >
               <Image
                 src={img.url}
                 alt={img.fileName}
                 fill
                 className="object-contain"
               />
-              <button
-                type="button"
-                onClick={() => removeImage(index)}
-                className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X className="w-3 h-3" />
-              </button>
+              <div className="absolute bottom-1 right-1 hidden items-center gap-1 rounded bg-white/90 px-1.5 py-1 text-[10px] text-slate-500 shadow sm:flex">
+                <GripVertical className="h-3 w-3" />拖动排序
+              </div>
+              <div className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                <button type="button" aria-label="向前移动" disabled={index === 0} onClick={() => moveImage(index, -1)} className="flex h-6 w-6 items-center justify-center rounded bg-white text-slate-700 shadow disabled:opacity-40">
+                  <ArrowLeft className="h-3 w-3" />
+                </button>
+                <button type="button" aria-label="向后移动" disabled={index === images.length - 1} onClick={() => moveImage(index, 1)} className="flex h-6 w-6 items-center justify-center rounded bg-white text-slate-700 shadow disabled:opacity-40">
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+                <button type="button" aria-label={`删除 ${img.fileName}`} onClick={() => removeImage(index)} className="flex h-6 w-6 items-center justify-center rounded bg-red-600 text-white shadow">
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
               {index === 0 && (
                 <span className="absolute bottom-1 left-1 text-xs bg-amber-500 text-black px-1.5 py-0.5 rounded font-medium">
                   主图

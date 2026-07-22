@@ -9,15 +9,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut, User, ExternalLink } from "lucide-react";
+import { LogOut, User, ExternalLink, Menu } from "lucide-react";
 import Link from "next/link";
 
-export function AdminTopbar() {
+export function AdminTopbar({ onMenuClick }: { onMenuClick: () => void }) {
   const { data: session } = useSession();
 
   return (
     <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-6">
       <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={onMenuClick}
+          className="-ml-2 rounded-md p-2 text-slate-600 hover:bg-slate-100 md:hidden"
+          aria-label="打开导航"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
         <Link
           href="/"
           target="_blank"
